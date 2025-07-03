@@ -3,7 +3,7 @@ from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.matcher import Matcher
 from spacy.pipeline import Pipe
-from anonymacy.conflict_resolver import ConflictResolver
+from conflict_resolver import ConflictResolver
 
 @Language.factory("pattern_recognizer")
 class PatternRecognizer(Pipe):
