@@ -89,7 +89,7 @@ class ConflictResolver(Pipe):
         if self.threshold > 0.0:
             resolved_spans = [
                 span for span in resolved_spans 
-                if getattr(span._, "score", 1.0) >= self.threshold
+                if self._get_span_score(span) >= self.threshold
             ]
         
         # Output to specified target
@@ -137,6 +137,12 @@ class ConflictResolver(Pipe):
         elif self.strategy == "highest_confidence":
             # Sort by score (descending), then by length (descending)
             return max(group, key=lambda s: (
-                getattr(s._, "score", 1.0),
+                self._get_span_score(s),
                 s.end - s.start
             ))
+
+    def _get_span_score(self, span):
+        """Get score for span, preferring label-specific score."""
+        if hasattr(span._, "scores") and span.label_ in span._.scores:
+            return span._.scores[span.label_]
+        return getattr(span._, "score", 0.0)

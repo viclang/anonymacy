@@ -1,19 +1,20 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
-#     "anonymacy==0.1.0",
+#     "anonymacy==0.0.8",
 #     "marimo",
 #     "spacy==3.8.7",
 #     "nl-core-news-md @ https://github.com/explosion/spacy-models/releases/download/nl_core_news_md-3.8.0/nl_core_news_md-3.8.0-py3-none-any.whl",
+#     "phonenumbers==9.0.8",
 # ]
 #
 # [tool.uv.sources]
-# anonymacy = { path = "../anonymacy", editable = true }
+# anonymacy = { path = "../", editable = true }
 # ///
 
 import marimo
 
-__generated_with = "0.14.9"
+__generated_with = "0.14.10"
 app = marimo.App(width="medium")
 
 
@@ -23,18 +24,21 @@ def _():
     import os
     from pathlib import Path
     import marimo as mo
+    from spacy import Language
     from spacy.lang.nl import Dutch
     from spacy.pipeline import SpanRuler
     from spacy.tokens import Span
     from spacy import displacy
     import spacy
-    from custom_spacy import PatternRecognizer, ContextEnhancer
+
+    from anonymacy import ContextEnhancer
+    from anonymacy.recognizer import PatternRecognizer, BsnRecognizer
     return displacy, mo, spacy
 
 
 @app.cell(hide_code=True)
 def _(mo):
-    text_area = mo.ui.text_area(value="1982g bij4za#a april 23e De heer De Vries met 123456789 is bsn had vandaag een beetje last van duizeligheid na het innemen van zijn medicatie (Metoprolol 50mg) om 10:00. Bloeddruk gemeten om 11:00: 88/47. Arts geïnformeerd. Het advies is om medicatie in de middag te herhalen en te controleren op mogelijk onderliggende oorzaken. Cliënt gaf aan dat hij dit eerder heeft ervaren na het aanpassen van zijn dieet. Mevrouw Janssen klaagde vanmiddag opnieuw over hevige buikpijn. Dit is de derde keer in deze maand dat ze deze klachten meldt. Er is een afspraak gemaakt voor een echografie op 21-09-2023 in het St. Antonius Ziekenhuis. Haar partner, Peter Bakker, werd op de hoogte gebracht van de situatie en gaf aan bij de afspraak aanwezig te willen zijn. De heer Van der Zee heeft vanochtend tijdens de groepsessie aangegeven dat hij zich emotioneel onstabiel voelt sinds zijn ontslag uit de verslavingskliniek. Hij gaf aan last te hebben van terugvalverlangens richting alcohol. Een crisisinterventie werd telefonisch gepland met zijn verslavingscoach. Aangepaste medicatie voorgesteld door de psychiater, overleg volgt.", rows= 10)
+    text_area = mo.ui.text_area(value="1982g bij4za#a april 23e De heer De Vries met 376174316 bsn met 0612345678 had vandaag een beetje last van duizeligheid na het innemen van zijn medicatie (Metoprolol 50mg) om 10:00. Bloeddruk gemeten om 11:00: 88/47. Arts geïnformeerd. Het advies is om medicatie in de middag te herhalen en te controleren op mogelijk onderliggende oorzaken. Cliënt gaf aan dat hij dit eerder heeft ervaren na het aanpassen van zijn dieet. Mevrouw Janssen klaagde vanmiddag opnieuw over hevige buikpijn. Dit is de derde keer in deze maand dat ze deze klachten meldt. Er is een afspraak gemaakt voor een echografie op 21-09-2023 in het St. Antonius Ziekenhuis. Haar partner, Peter Bakker, werd op de hoogte gebracht van de situatie en gaf aan bij de afspraak aanwezig te willen zijn. De heer Van der Zee heeft vanochtend tijdens de groepsessie aangegeven dat hij zich emotioneel onstabiel voelt sinds zijn ontslag uit de verslavingskliniek. Hij gaf aan last te hebben van terugvalverlangens richting alcohol. Een crisisinterventie werd telefonisch gepland met zijn verslavingscoach. Aangepaste medicatie voorgesteld door de psychiater, overleg volgt.", rows= 10)
     text_area
     return (text_area,)
 
@@ -65,27 +69,26 @@ def _(displacy, mo, spacy, text_area):
 
     nlp = spacy.load("nl_core_news_md", disable=["ner"])
     nlp.add_pipe("gliner_spacy", config=custom_spacy_config)
+    nlp.add_pipe("bsn_recognizer")
+    nlp.add_pipe("phone_recognizer")
 
-    pattern_config = [
-            { "label" : "bsn", "score" : 0.5, "pattern": [{"LENGTH" : 9, "IS_DIGIT" : True}] }
+    enhancer_config = {
+        "patterns": [
+            {"label": "bsn", "pattern": [{"LOWER": "bsn"}] }
         ]
-
-    recognizer_config = {"style": "span", "spans_key": "sc", "allow_overlap": True }
-    recognizer = nlp.add_pipe("pattern_recognizer", config=recognizer_config)
-    recognizer.add_patterns(pattern_config)
-
-    enhancer = nlp.add_pipe("context_enhancer")
-
-    print(enhancer.context_words)
-
-    context_pattern_config = [
-        {"label": "bsn", "pattern": [{"LOWER": "bsn"}] }
-    ]
-    enhancer.add_context_patterns(context_pattern_config)
+    }
+    enhancer = nlp.add_pipe("context_enhancer", config=enhancer_config)
 
     nlp.add_pipe("conflict_resolver", last=True)
 
 
+
+    anonymizer = nlp.add_pipe("anonymizer")
+    anonymizer.add_operators(
+        {
+            "bsn": "bsn1"
+        }
+    )
 
     text = text_area.value
     doc = nlp(text)
@@ -112,6 +115,12 @@ def _(displacy, mo, spacy, text_area):
 
     mo.iframe(html, height=400)
     return (doc,)
+
+
+@app.cell
+def _(doc):
+    print(doc._.anonymized_text)
+    return
 
 
 @app.cell

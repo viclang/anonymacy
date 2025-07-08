@@ -2,7 +2,12 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
+import logging
 
+logger = logging.getLogger("anonymizer")
+
+NoArgOperator = Callable[[], str]
+TextOperator = Callable[[str], str]
 
 @Language.factory("anonymizer")
 class Anonymizer(Pipe):
@@ -13,8 +18,7 @@ class Anonymizer(Pipe):
         nlp: Language,
         name: str = "anonymizer",
         style: str = "ent",
-        spans_key: str = "sc",
-        operators: Optional[Dict[str, Union[str, Callable[[str], str]]]] = None
+        spans_key: str = "sc"
     ):
         """Initialize the Anonymizer component.
         
@@ -33,7 +37,7 @@ class Anonymizer(Pipe):
         self.name = name
         self.spans_key = spans_key
         self.style = style
-        self.operators = operators or {}
+        self.operators: Dict[str, Union[str, NoArgOperator, TextOperator]] = {}
         
         # Register Doc extensions
         if not Doc.has_extension("anonymized_text"):
@@ -61,7 +65,7 @@ class Anonymizer(Pipe):
             # Add text before this span
             anonymized_parts.append(doc.text[last_end:span.start_char])
             
-            # Get operator for this entity type
+            default_anonymized_value = f"[{span.label_.upper()}]"
             operator = self.operators.get(span.label_)
             
             if operator:
@@ -69,11 +73,32 @@ class Anonymizer(Pipe):
                 if isinstance(operator, str):
                     anonymized_value = operator
                 else:
-                    # Pass just the text, not the whole span
-                    anonymized_value = operator(span.text)
+                    try:
+                        argcount = operator.__code__.co_argcount
+                        # Handle bound methods (like fake.name)
+                        if hasattr(operator, '__self__'):
+                            argcount -= 1  # Subtract 'self' parameter
+                        
+                        if argcount == 0:
+                            anonymized_value = operator()
+                        else:
+                            anonymized_value = operator(span.text)
+                    except AttributeError:
+                        try:
+                            anonymized_value = str(operator(span.text))
+                        except Exception as e:
+                            # Log warning for truly unsupported cases
+                            op_name = getattr(operator, '__name__', repr(operator))
+                            logger.warning(
+                                f"Operator for '{span.label_}' ({op_name}) failed: {e}. "
+                                f"This operator cannot be called with text. "
+                                f"Please wrap it in a lambda if needed."
+                            )
+                            # Use entity type as fallback
+                            anonymized_value = default_anonymized_value
             else:
                 # Default: replace with entity type
-                anonymized_value = f"<{span.label_}>"
+                anonymized_value = default_anonymized_value
             
             # Add anonymized value
             anonymized_parts.append(anonymized_value)
@@ -87,7 +112,6 @@ class Anonymizer(Pipe):
                 "anonymized": anonymized_value
             }
             anonymized_spans.append(anonymized_span_info)
-            
             last_end = span.end_char
         
         # Add remaining text
@@ -105,6 +129,6 @@ class Anonymizer(Pipe):
             return list(doc.ents) if doc.ents else []
         return list(doc.spans.get(self.spans_key, []))
     
-    def set_operators(self, operators: Dict[str, Union[str, Callable[[str], str]]]) -> None:
+    def add_operators(self, operators: Dict[str, Union[str, NoArgOperator, TextOperator]]) -> None:
         """Update operators."""
         self.operators = operators

@@ -6,12 +6,12 @@ from typing import Callable, Dict, List, Optional, Union
 from spacy import Language
 import spacy
 
-
 class Pipeline:
     """Simple builder for creating anonymization pipelines."""
     
     def __init__(self, model: str = "nl_core_news_md"):
         """Initialize with a spaCy model."""
+        
         self.nlp = spacy.load(model, disable=["ner"])
         self._patterns = []
         self._context_patterns = []

@@ -1,0 +1,25 @@
+[project]
+name = "anonymacy"
+version = "0.0.8"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "anonymacy" }
+]
+requires-python = ">=3.12"
+dependencies = [    
+    "gliner-spacy>=0.0.10",
+    "spacy>=3.8.7",
+    "nl-core-news-md @ https://github.com/explosion/spacy-models/releases/download/nl_core_news_md-3.8.0/nl_core_news_md-3.8.0-py3-none-any.whl",
+    "phonenumbers>=9.0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/anonymacy"]
