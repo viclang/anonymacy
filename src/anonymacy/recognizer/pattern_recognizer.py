@@ -93,7 +93,6 @@ class PatternRecognizer(Recognizer):
             span = Span(doc, start, end, label=label)
             span._.score = self._patterns[idx]["score"]
             new_spans.append(span)
-            print(f"Matched span: {span.text} with label: {label} and score: {span._.score}")
         return new_spans
     
     def _invalidate_result(self, text: str, label: str = None) -> bool:

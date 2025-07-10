@@ -17,6 +17,7 @@ class Anonymizer(Pipe):
         self,
         nlp: Language,
         name: str = "anonymizer",
+        operators: Dict[str, Union[str, NoArgOperator, TextOperator]] = None,
         style: str = "ent",
         spans_key: str = "sc"
     ):
@@ -37,7 +38,7 @@ class Anonymizer(Pipe):
         self.name = name
         self.spans_key = spans_key
         self.style = style
-        self.operators: Dict[str, Union[str, NoArgOperator, TextOperator]] = {}
+        self.operators = operators if operators else {}
         
         # Register Doc extensions
         if not Doc.has_extension("anonymized_text"):
@@ -128,7 +129,3 @@ class Anonymizer(Pipe):
         if self.style == "ent":
             return list(doc.ents) if doc.ents else []
         return list(doc.spans.get(self.spans_key, []))
-    
-    def add_operators(self, operators: Dict[str, Union[str, NoArgOperator, TextOperator]]) -> None:
-        """Update operators."""
-        self.operators = operators
