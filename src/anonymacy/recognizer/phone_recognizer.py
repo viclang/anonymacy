@@ -2,12 +2,12 @@ from typing import List, Set, Optional
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
-from .base_recognizer import Recognizer
+from .base_recognizer import BaseRecognizer
 import phonenumbers
 from anonymacy.context_enhancer import ContextPattern
 
 @Language.factory("phone_recognizer")
-class PhoneRecognizer(Recognizer):
+class PhoneRecognizer(BaseRecognizer):
     """spaCy pipeline component for recognizing phone numbers using phonenumbers library."""
     
     CONTEXT_PATTERNS = [

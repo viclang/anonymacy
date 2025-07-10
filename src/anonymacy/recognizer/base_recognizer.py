@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 
 ContextPattern = Dict[str, Union[str, bool, List[Dict[str, Any]]]]
 
-class Recognizer(Pipe, ABC):
+class BaseRecognizer(Pipe, ABC):
     """Base class for custom spaCy recognizers with automatic deduplication.
     
     Example:

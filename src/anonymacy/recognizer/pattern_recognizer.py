@@ -2,14 +2,14 @@ from typing import Any, Dict, List, Union
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.matcher import Matcher
-from .base_recognizer import Recognizer
+from .base_recognizer import BaseRecognizer
 from anonymacy.context_enhancer import ContextPattern
 
 MAX_SCORE = 1.0
 Pattern = Dict[str, Union[str, float, List[Dict[str, Any]]]]
 
 @Language.factory("pattern_recognizer")
-class PatternRecognizer(Recognizer):
+class PatternRecognizer(BaseRecognizer):
     def __init__(self,
         nlp: Language,
         name: str = "pattern_recognizer",
