@@ -79,7 +79,6 @@ class BaseRecognizer(Pipe, ABC):
                 continue
             
             key = (span.start, span.end)
-            print(f"Processing span: {span.text} with label: {span.label_} and score: {span._.score}")
             if key not in spans_by_position or spans_by_position[key]._.score < span._.score:
                 spans_by_position[key] = span
 
