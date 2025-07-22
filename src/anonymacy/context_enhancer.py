@@ -21,10 +21,12 @@ class ContextEnhancer(Pipe):
         added_context_words: Optional[List[str]] = None,
         confidence_boost: float = 0.35,
         min_enhanced_score: float = 0.4,
-        context_window: Tuple[int, int] = (5, 1),
+        context_window: Tuple[int, int] = (5, 2),
+        allow_dependency_link: bool = True,
         style: str = "span",
         spans_key: str = "sc",
-        ignore_recognizers: bool = False  # New parameter
+        ignore_recognizer_context: bool = False,
+        ignore_sources: List[str] = ["unknown"]
     ):
         """Initialize ContextEnhancer.
         
@@ -36,10 +38,11 @@ class ContextEnhancer(Pipe):
             confidence_boost: Score increase for enhanced spans
             min_enhanced_score: Minimum score after enhancement
             context_window: (before, after) token window for context matching
+            allow_dependency_link: If True, allows dependency-based context matching
             style: "ent" or "span" for where to store results
             spans_key: Key for doc.spans if style="span"
-            ignore_recognizers: If True, only use ContextEnhancer patterns.
-                               If False, also collect patterns from recognizers.
+            ignore_recognizer_context: If True, ignores context patterns from recognizers
+            ignore_sources: List of sources to ignore when enhancing spans
         """
         self.nlp = nlp
         self.name = name
@@ -47,10 +50,11 @@ class ContextEnhancer(Pipe):
         self.confidence_boost = confidence_boost
         self.min_enhanced_score = min_enhanced_score
         self.context_before, self.context_after = context_window
+        self.allow_dependency_link = allow_dependency_link
         self.style = style
         self.spans_key = spans_key
-        self.ignore_recognizers = ignore_recognizers
-        
+        self.ignore_recognizer_context = ignore_recognizer_context
+
         # Store our own patterns
         self._patterns = patterns if patterns else []
 
@@ -62,7 +66,7 @@ class ContextEnhancer(Pipe):
     
     def __call__(self, doc: Doc) -> Doc:
         """Process document."""
-        from anonymacy.recognizer import Recognizer
+        from anonymacy.recognizer import BaseRecognizer
         # Get spans
         spans = self._get_spans(doc)
         if not spans:
@@ -73,9 +77,9 @@ class ContextEnhancer(Pipe):
         all_patterns.extend(self._patterns)
         
         # Collect patterns from recognizers unless ignoring them
-        if not self.ignore_recognizers:
+        if not self.ignore_recognizer_context:
             for name, pipe in self.nlp.pipeline:
-                if isinstance(pipe, Recognizer) and pipe.context_patterns:
+                if isinstance(pipe, BaseRecognizer) and pipe.context_patterns:
                     all_patterns.extend(pipe.context_patterns)
         
         if not all_patterns:
@@ -115,17 +119,25 @@ class ContextEnhancer(Pipe):
         # Process each span
         processed_spans = []
         for span in spans:
+            
+            # Skip if source is in ignore list
+            source = getattr(span._, "source", "unknown")
+            if source in self.ignore_sources:
+                processed_spans.append(span)
+                continue
+
             # Skip if already enhanced
             if hasattr(span._, "supportive_context") and span._.supportive_context:
                 processed_spans.append(span)
                 continue
-            
+         
             should_invalidate = False
             supportive_context = []
             
             # Check all matches for this span
             for match_id, start, end in matches:
-                if not self._in_context(span, start, end, len(doc)):
+                match = doc[start:end]
+                if not self._in_context(span, match, len(doc)):
                     continue
                 
                 pattern_id = self.nlp.vocab.strings[match_id]
@@ -166,24 +178,40 @@ class ContextEnhancer(Pipe):
             doc.ents = spans
         else:
             doc.spans[self.spans_key] = spans
+
+    def _has_dependency_link(self, span: Span, match_tokens: Span) -> bool:
+        """Check if span and match_tokens are directly related via dependency (head or child)."""
+        if not span.doc.has_annotation("DEP"):
+            return False
+
+        for token in span:
+            for match_token in match_tokens:
+                if token.head == match_token or match_token.head == token:
+                    return True
+        return False
     
-    def _in_context(self, span: Span, match_start: int, match_end: int, doc_length: int) -> bool:
+    def _in_context(self, span: Span, match: Span, doc_length: int) -> bool:
         """Check if match is in span's context window."""
         # Check if match is one of the added_context_words
-        if match_start >= doc_length:
-            return True
 
+        if match.start >= doc_length:
+            return True
+        
         context_window_start = max(0, span.start - self.context_before)
         context_window_end = min(doc_length, span.end + self.context_after)
 
         # Before context - check if match ends in the before-window
-        if (context_window_start < match_end <= span.start):
+        if (context_window_start < match.end <= span.start):
             return True
         
         # After context - check if match starts in the after-window
-        if (span.end <= match_start < context_window_end):
+        if (span.end <= match.start < context_window_end):
             return True
 
+        # Outside of window: try dependency-based relation as fallback
+        if self.allow_dependency_link:
+            return self._has_dependency_link(span, match)
+        
         return False
     
     def _create_enhanced_span(self, span: Span, context: List[str]) -> Span:

@@ -33,7 +33,7 @@ custom_spacy_config = {
 
 
 
-nlp = spacy.load("nl_core_news_md", disable=["ner"])
+nlp = spacy.load("nl_core_news_sm", disable=["ner"])
 nlp.add_pipe("gliner_spacy", config=custom_spacy_config)
 nlp.add_pipe("bsn_recognizer")
 nlp.add_pipe("phone_recognizer")
@@ -55,7 +55,7 @@ anonymizer_config = {
     
 anonymizer = nlp.add_pipe("anonymizer", config=anonymizer_config)
 
-text = "1982g bij4za#a april 23e De heer De Vries met 376174316 bsn met 0612345678 had vandaag een beetje last van duizeligheid na het innemen van zijn medicatie (Metoprolol 50mg) om 10:00. Bloeddruk gemeten om 11:00: 88/47. Arts geïnformeerd. Het advies is om medicatie in de middag te herhalen en te controleren op mogelijk onderliggende oorzaken. Cliënt gaf aan dat hij dit eerder heeft ervaren na het aanpassen van zijn dieet. Mevrouw Janssen klaagde vanmiddag opnieuw over hevige buikpijn. Dit is de derde keer in deze maand dat ze deze klachten meldt. Er is een afspraak gemaakt voor een echografie op 21-09-2023 in het St. Antonius Ziekenhuis. Haar partner, Peter Bakker, werd op de hoogte gebracht van de situatie en gaf aan bij de afspraak aanwezig te willen zijn. De heer Van der Zee heeft vanochtend tijdens de groepsessie aangegeven dat hij zich emotioneel onstabiel voelt sinds zijn ontslag uit de verslavingskliniek. Hij gaf aan last te hebben van terugvalverlangens richting alcohol. Een crisisinterventie werd telefonisch gepland met zijn verslavingscoach. Aangepaste medicatie voorgesteld door de psychiater, overleg volgt."
+text = "1982g bij4za#a april 23e De heer De Vries met bsn 376174316 en telefoonnummer 0612345678 had vandaag een beetje last van duizeligheid na het innemen van zijn medicatie (Metoprolol 50mg) om 10:00."
 doc = nlp(text)
 
 if "sc" in doc.spans:
@@ -67,4 +67,4 @@ else:
 for span in spans:
     print(f"Text: {span.text}, Label: {span.label_}, Score: {span._.score:.2f}")
     if span._.supportive_context:
-        print(f"BSN Found: {span._.supportive_context}")
+        print(f"Context found: {span._.supportive_context}")

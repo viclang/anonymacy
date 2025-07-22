@@ -13,11 +13,11 @@ wheels = [
 
 [[package]]
 name = "anonymacy"
-version = "0.1.0"
+version = "0.1.8"
 source = { editable = "." }
 dependencies = [
     { name = "gliner-spacy" },
-    { name = "nl-core-news-md" },
+    { name = "nl-core-news-sm" },
     { name = "phonenumbers" },
     { name = "spacy" },
 ]
@@ -25,7 +25,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "gliner-spacy", specifier = ">=0.0.10" },
-    { name = "nl-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/nl_core_news_md-3.8.0/nl_core_news_md-3.8.0-py3-none-any.whl" },
+    { name = "nl-core-news-sm", url = "https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl" },
     { name = "phonenumbers", specifier = ">=9.0.8" },
     { name = "spacy", specifier = ">=3.8.7" },
 ]
@@ -636,11 +636,11 @@ wheels = [
 ]
 
 [[package]]
-name = "nl-core-news-md"
+name = "nl-core-news-sm"
 version = "3.8.0"
-source = { url = "https://github.com/explosion/spacy-models/releases/download/nl_core_news_md-3.8.0/nl_core_news_md-3.8.0-py3-none-any.whl" }
+source = { url = "https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl" }
 wheels = [
-    { url = "https://github.com/explosion/spacy-models/releases/download/nl_core_news_md-3.8.0/nl_core_news_md-3.8.0-py3-none-any.whl", hash = "sha256:8969da865bb746189783c40197a7e2c082adda73b7fc0d9a364a5e644ff54e68" },
+    { url = "https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl", hash = "sha256:a76978477821f213ca76a46c686df1b1d41462905d4868bc53eac086adca8b7e" },
 ]
 
 [[package]]

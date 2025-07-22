@@ -1,10 +1,10 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
-#     "anonymacy==0.1.0",
+#     "anonymacy==0.1.1",
 #     "marimo",
 #     "spacy==3.8.7",
-#     "nl-core-news-md @ https://github.com/explosion/spacy-models/releases/download/nl_core_news_md-3.8.0/nl_core_news_md-3.8.0-py3-none-any.whl",
+#     "nl-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl",
 #     "phonenumbers==9.0.8",
 # ]
 #
@@ -14,7 +14,7 @@
 
 import marimo
 
-__generated_with = "0.14.10"
+__generated_with = "0.14.12"
 app = marimo.App(width="medium")
 
 
@@ -67,7 +67,7 @@ def _(displacy, mo, spacy, text_area):
 
 
 
-    nlp = spacy.load("nl_core_news_md", disable=["ner"])
+    nlp = spacy.load("nl_core_news_sm", disable=["ner"])
     nlp.add_pipe("gliner_spacy", config=custom_spacy_config)
     nlp.add_pipe("bsn_recognizer")
     nlp.add_pipe("phone_recognizer")

@@ -51,6 +51,9 @@ class BaseRecognizer(Pipe, ABC):
         
         if not Span.has_extension("score"):
             Span.set_extension("score", default=0.0)
+
+        if not Span.has_extension("source"):
+            Span.set_extension("source", default="unknown")
     
     def __call__(self, doc: Doc) -> Doc:
         """Process document with automatic deduplication."""

@@ -92,6 +92,7 @@ class PatternRecognizer(BaseRecognizer):
             
             span = Span(doc, start, end, label=label)
             span._.score = self._patterns[idx]["score"]
+            span._.source = self.name
             new_spans.append(span)
         return new_spans
     

@@ -78,6 +78,7 @@ class PhoneRecognizer(BaseRecognizer):
                 if start_token is not None and end_token is not None:
                     span = Span(doc, start_token, end_token, label="PHONE_NUMBER")
                     span._.score = self.default_score
+                    span._.source = self.name
                     
                     # Avoid duplicates
                     is_duplicate = any(
