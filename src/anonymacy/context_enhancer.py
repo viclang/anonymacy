@@ -54,6 +54,7 @@ class ContextEnhancer(Pipe):
         self.style = style
         self.spans_key = spans_key
         self.ignore_recognizer_context = ignore_recognizer_context
+        self.ignore_sources = ignore_sources
 
         # Store our own patterns
         self._patterns = patterns if patterns else []
@@ -119,7 +120,7 @@ class ContextEnhancer(Pipe):
         # Process each span
         processed_spans = []
         for span in spans:
-            
+
             # Skip if source is in ignore list
             source = getattr(span._, "source", "unknown")
             if source in self.ignore_sources:
