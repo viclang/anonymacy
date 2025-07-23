@@ -1,7 +1,6 @@
 from typing import List, Set, Optional
 from spacy.language import Language
 from spacy.tokens import Doc, Span
-from spacy.pipeline import Pipe
 from .base_recognizer import BaseRecognizer
 import phonenumbers
 from anonymacy.context_enhancer import ContextPattern

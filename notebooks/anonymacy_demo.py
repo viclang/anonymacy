@@ -1,11 +1,11 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = [
-#     "anonymacy==0.1.1",
 #     "marimo",
-#     "spacy==3.8.7",
+#     "anonymacy==0.0.1",
+#     "gliner-spacy==0.0.11",
 #     "nl-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl",
-#     "phonenumbers==9.0.8",
+#     "spacy==3.8.7",
 # ]
 #
 # [tool.uv.sources]
