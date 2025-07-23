@@ -14,7 +14,7 @@
 
 import marimo
 
-__generated_with = "0.14.12"
+__generated_with = "0.14.13"
 app = marimo.App(width="medium")
 
 
@@ -38,7 +38,9 @@ def _():
 
 @app.cell(hide_code=True)
 def _(mo):
-    text_area = mo.ui.text_area(value="1982g bij4za#a april 23e De heer De Vries met 376174316 bsn met telefoon 0612345678 had vandaag een beetje last van duizeligheid na het innemen van zijn medicatie (Metoprolol 50mg) om 10:00. Bloeddruk gemeten om 11:00: 88/47. Arts geïnformeerd. Het advies is om medicatie in de middag te herhalen en te controleren op mogelijk onderliggende oorzaken. Cliënt gaf aan dat hij dit eerder heeft ervaren na het aanpassen van zijn dieet. Mevrouw Janssen klaagde vanmiddag opnieuw over hevige buikpijn. Dit is de derde keer in deze maand dat ze deze klachten meldt. Er is een afspraak gemaakt voor een echografie op 21-09-2023 in het St. Antonius Ziekenhuis. Haar partner, Peter Bakker, werd op de hoogte gebracht van de situatie en gaf aan bij de afspraak aanwezig te willen zijn. De heer Van der Zee heeft vanochtend tijdens de groepsessie aangegeven dat hij zich emotioneel onstabiel voelt sinds zijn ontslag uit de verslavingskliniek. Hij gaf aan last te hebben van terugvalverlangens richting alcohol. Een crisisinterventie werd telefonisch gepland met zijn verslavingscoach. Aangepaste medicatie voorgesteld door de psychiater, overleg volgt.", rows= 10)
+    text_area = mo.ui.text_area(
+        value="Mijn naam is Anna de Vries en ik wil graag een melding doen over een probleem dat ik heb ervaren bij het Medisch Centrum Amsterdam. Tijdens mijn opname in het ziekenhuis vorig jaar ontving ik een onjuiste behandeling, wat heeft geleid tot ernstige bijwerkingen van het medicijn metoprolol. Ik heb dit meerdere keren besproken met mijn behandelend arts, maar zonder resultaat. Mijn bsn is 376174316 en mijn telefoonnummer is 0612345678. Ik ben woonachtig aan de Dorpsstraat 42 in Haarlem en ben verzekerd bij Zorgzaam Verzekeringen. Ik werk zelf als verpleegkundige bij het Woonzorgcentrum De Lentehof, waar ik dagelijks mensen help met dementiezorg. Mijn e-mailadres is anna.devries1980@gmail.com en ik wil erop aandringen dat deze klacht serieus wordt genomen. De communicatie met de organisatie houdt te wensen over. Ik voel mij onvoldoende gehoord en wil dat hier iets aan wordt gedaan. Uiteindelijk wil ik benadrukken dat deze situatie mijn vertrouwen in de zorginstelling aanzienlijk heeft geschaad.",
+        rows= 10)
     text_area
     return (text_area,)
 
@@ -140,7 +142,7 @@ def _(doc):
     for span in spans:
         print(f"Text: {span.text}, Label: {span.label_}, Score: {span._.score:.2f}")
         if span._.supportive_context:
-            print(f"BSN Found: {span._.supportive_context}")
+            print(f"Context Found: {span._.supportive_context}")
 
     return
 
