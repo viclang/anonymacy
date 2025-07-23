@@ -50,6 +50,7 @@ class BsnRecognizer(PatternRecognizer):
             nlp=nlp,
             name=name,
             patterns=patterns,
+            context_patterns=context_patterns,
             style=style,
             spans_key=spans_key,
             allow_overlap=allow_overlap,

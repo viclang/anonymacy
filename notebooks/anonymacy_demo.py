@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = [
 #     "marimo",
-#     "anonymacy==0.0.2",
+#     "anonymacy==0.0.3",
 #     "gliner-spacy==0.0.11",
 #     "nl-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl",
 #     "spacy==3.8.7",
@@ -23,14 +23,15 @@ def _():
     import marimo as mo
     from spacy import displacy
     import spacy
-
+    from anonymacy import ContextEnhancer
+    from anonymacy.recognizer import PatternRecognizer, BsnRecognizer
     return displacy, mo, spacy
 
 
 @app.cell(hide_code=True)
 def _(mo):
     text_area = mo.ui.text_area(
-        value="Mijn naam is Anna de Vries en ik wil graag een melding doen over een probleem dat ik heb ervaren bij het Medisch Centrum Amsterdam. Tijdens mijn opname in het ziekenhuis vorig jaar ontving ik een onjuiste behandeling, wat heeft geleid tot ernstige bijwerkingen van het medicijn metoprolol. Ik heb dit meerdere keren besproken met mijn behandelend arts, maar zonder resultaat. Mijn bsn is 376174316 en mijn telefoonnummer is 0612345678. Ik ben woonachtig aan de Dorpsstraat 42 in Haarlem en ben verzekerd bij Zorgzaam Verzekeringen. Ik werk zelf als verpleegkundige bij het Woonzorgcentrum De Lentehof, waar ik dagelijks mensen help met dementiezorg. Mijn e-mailadres is anna.devries1980@gmail.com en ik wil erop aandringen dat deze klacht serieus wordt genomen. De communicatie met de organisatie houdt te wensen over. Ik voel mij onvoldoende gehoord en wil dat hier iets aan wordt gedaan. Uiteindelijk wil ik benadrukken dat deze situatie mijn vertrouwen in de zorginstelling aanzienlijk heeft geschaad.",
+        value="Mijn naam is Anna de Vries en ik wil graag een melding doen over een probleem dat ik heb ervaren bij het Medisch Centrum Amsterdam. Tijdens mijn opname in het ziekenhuis vorig jaar ontving ik een onjuiste behandeling, wat heeft geleid tot ernstige bijwerkingen van het medicijn metoprolol. Ik heb dit meerdere keren besproken met mijn behandelend arts, maar zonder resultaat. Mijn bsnnummer is 376174316 en mijn telefoonnummer is 0612345678. Ik ben woonachtig aan de Dorpsstraat 42 in Haarlem en ben verzekerd bij Zorgzaam Verzekeringen. Ik werk zelf als verpleegkundige bij het Woonzorgcentrum De Lentehof, waar ik dagelijks mensen help met dementiezorg. Mijn e-mailadres is anna.devries1980@gmail.com en ik wil erop aandringen dat deze klacht serieus wordt genomen. De communicatie met de organisatie houdt te wensen over. Ik voel mij onvoldoende gehoord en wil dat hier iets aan wordt gedaan. Uiteindelijk wil ik benadrukken dat deze situatie mijn vertrouwen in de zorginstelling aanzienlijk heeft geschaad.",
         rows= 10)
     text_area
     return (text_area,)
@@ -65,12 +66,7 @@ def _(displacy, mo, spacy, text_area):
     nlp.add_pipe("bsn_recognizer")
     nlp.add_pipe("phone_recognizer")
 
-    enhancer_config = {
-        "patterns": [
-            {"label": "bsn", "pattern": [{"LOWER": "bsn"}] }
-        ]
-    }
-    enhancer = nlp.add_pipe("context_enhancer", config=enhancer_config)
+    enhancer = nlp.add_pipe("context_enhancer")
 
     nlp.add_pipe("conflict_resolver")
 
