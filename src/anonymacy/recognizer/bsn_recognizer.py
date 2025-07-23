@@ -8,16 +8,31 @@ class BsnRecognizer(PatternRecognizer):
     """Custom spaCy pipeline component for recognizing BSN numbers."""
     
     PATTERNS: List[Pattern] = [
-        { "label" : "bsn", "score" : 0.4, "pattern": [{"LENGTH" : 9, "IS_DIGIT" : True}] },
-        { "label": "bsn", "score": 0.3, "pattern": [{"LENGTH": 8, "IS_DIGIT": True}] },
-        { "label": "bsn", "score": 0.1, "pattern": [
+        { "label" : "BSN", "score" : 0.4, "pattern": [{"LENGTH" : 9, "IS_DIGIT" : True}] },
+        { "label": "BSN", "score": 0.3, "pattern": [{"LENGTH": 8, "IS_DIGIT": True}] },
+        { "label": "BSN", "score": 0.1, "pattern": [
                 {"SHAPE": "dd"}, {"TEXT": "."}, {"SHAPE": "ddd"}, {"TEXT": "."}, {"SHAPE": "ddd"}] },
-        { "label": "bsn", "score": 0.1, "pattern": [
+        { "label": "BSN", "score": 0.1, "pattern": [
                 {"SHAPE": "dd"}, {"TEXT": "-"}, {"SHAPE": "ddd"}, {"TEXT": "-"}, {"SHAPE": "ddd"}] },
-        { "label": "bsn", "score": 0.1, "pattern": [
+        { "label": "BSN", "score": 0.1, "pattern": [
                 {"SHAPE": "dd"}, {"IS_SPACE": True}, {"SHAPE": "ddd"}, {"IS_SPACE": True}, {"SHAPE": "ddd"}] },
     ]
     
+    CONTEXT_PATTERNS = [
+        {
+            "label": "BSN",
+            "pattern": [ {"LEMMA": { "IN": [
+                "bsn",
+                "bsnnummer",
+                "bsn-nummer",
+                "burgerservice",
+                "burgerservicenummer",
+                "sofinummer",
+                "sofi-nummer",
+            ] } } ],
+        }
+    ]
+
     def __init__(
         self,
         nlp: Language,
@@ -30,6 +45,7 @@ class BsnRecognizer(PatternRecognizer):
         conflict_strategy: str = "highest_confidence"
     ):
         patterns = patterns if patterns else self.PATTERNS
+        context_patterns = context_patterns if context_patterns else self.CONTEXT_PATTERNS
         super().__init__(
             nlp=nlp,
             name=name,
