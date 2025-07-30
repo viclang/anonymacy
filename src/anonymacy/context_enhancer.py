@@ -4,10 +4,25 @@ from spacy.tokens import Doc, Span
 from spacy.matcher import Matcher
 from spacy.pipeline import Pipe
 import logging
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    TypedDict,
+    ReadOnly,
+    Required,
+    NotRequired,
+)
 
 logger = logging.getLogger("context-enhancer")
 
-ContextPattern = Dict[str, Union[str, bool, List[Dict[str, Any]]]]
+class ContextPatternType(TypedDict):
+    label: ReadOnly[Required[str]]
+    context: ReadOnly[Required[Union[str, List[Dict[str, Any]]]]]
+    invalidate: ReadOnly[NotRequired[bool]]
 
 @Language.factory("context_enhancer")
 class ContextEnhancer(Pipe):
@@ -17,7 +32,7 @@ class ContextEnhancer(Pipe):
         self,
         nlp: Language,
         name: str = "context_enhancer",
-        patterns: List[ContextPattern] = None,
+        patterns: List[ContextPatternType] = None,
         added_context_words: Optional[List[str]] = None,
         confidence_boost: float = 0.35,
         min_enhanced_score: float = 0.4,
