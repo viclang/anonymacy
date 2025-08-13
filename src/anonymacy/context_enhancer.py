@@ -12,7 +12,6 @@ from typing import (
     Tuple,
     Union,
     TypedDict,
-    ReadOnly,
     Required,
     NotRequired,
 )
@@ -20,9 +19,9 @@ from typing import (
 logger = logging.getLogger("context-enhancer")
 
 class ContextPatternType(TypedDict):
-    label: ReadOnly[Required[str]]
-    context: ReadOnly[Required[Union[str, List[Dict[str, Any]]]]]
-    invalidate: ReadOnly[NotRequired[bool]]
+    label: Required[str]
+    context: Required[Union[str, List[Dict[str, Any]]]]
+    invalidate: NotRequired[bool]
 
 @Language.factory("context_enhancer")
 class ContextEnhancer(Pipe):
@@ -32,14 +31,14 @@ class ContextEnhancer(Pipe):
         self,
         nlp: Language,
         name: str = "context_enhancer",
+        spans_key: str = "sc",
+        style: str = "span",
         patterns: List[ContextPatternType] = None,
         added_context_words: Optional[List[str]] = None,
         confidence_boost: float = 0.35,
         min_enhanced_score: float = 0.4,
         context_window: Tuple[int, int] = (5, 2),
         allow_dependency_link: bool = True,
-        style: str = "span",
-        spans_key: str = "sc",
         ignore_recognizer_context: bool = False,
         ignore_sources: List[str] = ["unknown"]
     ):
@@ -82,7 +81,6 @@ class ContextEnhancer(Pipe):
     
     def __call__(self, doc: Doc) -> Doc:
         """Process document."""
-        from anonymacy.recognizer import BaseRecognizer
         # Get spans
         spans = self._get_spans(doc)
         if not spans:
@@ -95,7 +93,7 @@ class ContextEnhancer(Pipe):
         # Collect patterns from recognizers unless ignoring them
         if not self.ignore_recognizer_context:
             for name, pipe in self.nlp.pipeline:
-                if isinstance(pipe, BaseRecognizer) and pipe.context_patterns:
+                if hasattr(pipe, 'context_patterns') and pipe.context_patterns:
                     all_patterns.extend(pipe.context_patterns)
         
         if not all_patterns:

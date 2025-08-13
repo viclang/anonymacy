@@ -1,20 +1,20 @@
 # /// script
-# requires-python = ">=3.12"
+# requires-python = ">=3.9,<3.14"
 # dependencies = [
-#     "marimo",
-#     "anonymacy==0.0.3",
-#     "gliner-spacy==0.0.11",
+#     "anonymacy",
+#     "gliner-spacy",
 #     "nl-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl",
-#     "spacy==3.8.7",
+#     "spacy",
 # ]
 #
 # [tool.uv.sources]
 # anonymacy = { path = "../", editable = true }
+#
 # ///
 
 import marimo
 
-__generated_with = "0.14.13"
+__generated_with = "0.14.17"
 app = marimo.App(width="medium")
 
 
@@ -23,8 +23,7 @@ def _():
     import marimo as mo
     from spacy import displacy
     import spacy
-    from anonymacy import ContextEnhancer
-    from anonymacy.recognizer import PatternRecognizer, BsnRecognizer
+    from anonymacy import ContextEnhancer, Recognizer
     return displacy, mo, spacy
 
 
@@ -63,11 +62,21 @@ def _(displacy, mo, spacy, text_area):
 
     nlp = spacy.load("nl_core_news_sm", disable=["ner"])
     nlp.add_pipe("gliner_spacy", config=custom_spacy_config)
-    nlp.add_pipe("bsn_recognizer")
-    nlp.add_pipe("phone_recognizer")
 
-    enhancer = nlp.add_pipe("context_enhancer")
+    recognizer = nlp.add_pipe("recognizer", name="recognizer")
+    recognizer.add_patterns([
+        { "label" : "BSN", "score" : 0.4, "pattern": [{"LENGTH" : 9, "IS_DIGIT" : True}] },
+        { "label": "BSN", "score": 0.3, "pattern": [{"LENGTH": 8, "IS_DIGIT": True}] },
+        { "label": "BSN", "score": 0.1, "pattern": [
+            {"SHAPE": "dd"}, {"TEXT": "."}, {"SHAPE": "ddd"}, {"TEXT": "."}, {"SHAPE": "ddd"}] },
+        { "label": "BSN", "score": 0.1, "pattern": [
+            {"SHAPE": "dd"}, {"TEXT": "-"}, {"SHAPE": "ddd"}, {"TEXT": "-"}, {"SHAPE": "ddd"}] },
+        { "label": "BSN", "score": 0.1, "pattern": [
+            {"SHAPE": "dd"}, {"IS_SPACE": True}, {"SHAPE": "ddd"}, {"IS_SPACE": True}, {"SHAPE": "ddd"}] },
+    ])
 
+    
+    nlp.add_pipe("context_enhancer")
     nlp.add_pipe("conflict_resolver")
 
 

@@ -3,6 +3,58 @@ from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.matcher import Matcher
 from spacy.pipeline import Pipe
+import itertools
+from typing import (
+    Any,
+    Dict,
+    Set,
+    List,
+    Optional,
+    Callable,
+    Iterable,
+    Tuple,
+    Union,
+    TypedDict,
+    Required,
+    NotRequired,
+)
+
+def highest_confidence_filter(*spans: Iterable["Span"]) -> List[Span]:
+    """Filter overlapping spans by selecting the one with the highest confidence score.
+    
+    When spans overlap, the span with the highest score is preferred. If scores are
+    equal, the longer span is preferred. If both score and length are equal, the
+    span that starts first is preferred.
+    
+    Args:
+        spans: Iterable of potentially overlapping spans with confidence scores
+        
+    Returns:
+        List of non-overlapping spans
+    """
+    spans = itertools.chain(*spans)
+    sorted_spans = sorted(
+        spans,
+        key=lambda span: (
+            getattr(span._, "score", 0.0),
+            span.end - span.start,
+            -span.start
+        ),
+        reverse=True
+    )
+    
+    result: List[Span] = []
+    seen_tokens: Set[int] = set()
+    
+    for span in sorted_spans:
+        # Check if any token in this span has already been claimed
+        if all(token.i not in seen_tokens for token in span):
+            result.append(span)
+            seen_tokens.update(range(span.start, span.end))
+            
+    return sorted(result, key=lambda s: s.start)
+
+SpansFilterFunc = Callable[[Iterable[Span], Iterable[Span]], Iterable[Span]]
 
 @Language.factory("conflict_resolver")
 class ConflictResolver(Pipe):
@@ -12,9 +64,9 @@ class ConflictResolver(Pipe):
         self,
         nlp: Optional[Language] = None,
         name: str = "conflict_resolver",
-        strategy: str = "highest_confidence",
         spans_key: str = "sc",
         style: str = "ent",
+        spans_filter: SpansFilterFunc = highest_confidence_filter,
         threshold: float = 0.5
     ):
         """Initialize the ConflictResolver.
@@ -35,46 +87,9 @@ class ConflictResolver(Pipe):
         self.nlp = nlp
         self.name = name
         self.spans_key = spans_key
-        self.threshold = threshold
-        
-        valid_strategies = {"keep_first", "keep_last", "highest_confidence"}
-        if strategy not in valid_strategies:
-            raise ValueError(f"Invalid strategy: {strategy}. Must be one of {valid_strategies}")
-        self.strategy = strategy
-        
-        valid_outputs = {"span", "ent"}
-        if style not in valid_outputs:
-            raise ValueError(f"Invalid style: {style}. Must be one of {valid_outputs}")
         self.style = style
-    
-    def resolve(self, spans: List[Span]) -> List[Span]:
-        """Resolve conflicts between overlapping spans (standalone method).
-        
-        Args:
-            spans: List of potentially overlapping spans
-            
-        Returns:
-            List of non-overlapping spans based on the resolution strategy
-        """
-        if not spans or len(spans) <= 1:
-            return spans
-        
-        # Sort spans by start position
-        sorted_spans = sorted(spans, key=lambda s: (s.start, s.end))
-        
-        # Group overlapping spans
-        groups = self._group_overlapping_spans(sorted_spans)
-        
-        # Resolve each group
-        resolved = []
-        for group in groups:
-            if len(group) == 1:
-                resolved.append(group[0])
-            else:
-                winner = self._select_winner(group)
-                resolved.append(winner)
-        
-        return sorted(resolved, key=lambda s: (s.start, s.end))
+        self.spans_filter = spans_filter
+        self.threshold = threshold
     
     def __call__(self, doc: Doc) -> Doc:
         """Process document and resolve span conflicts (pipeline method)."""
@@ -83,7 +98,7 @@ class ConflictResolver(Pipe):
             return doc
         
         # Resolve conflicts
-        resolved_spans = self.resolve(spans)
+        resolved_spans = self.spans_filter(spans)
         
         # Apply threshold filtering
         if self.threshold > 0.0:
@@ -99,44 +114,3 @@ class ConflictResolver(Pipe):
             doc.spans[self.spans_key] = resolved_spans
         
         return doc
-    
-    def _group_overlapping_spans(self, spans: List[Span]) -> List[List[Span]]:
-        """Group spans that overlap with each other."""
-        groups = []
-        current_group = [spans[0]]
-        
-        for span in spans[1:]:
-            # Check if span overlaps with any span in current group
-            overlaps = False
-            for group_span in current_group:
-                if span.start < group_span.end and group_span.start < span.end:
-                    overlaps = True
-                    break
-            
-            if overlaps:
-                current_group.append(span)
-            else:
-                groups.append(current_group)
-                current_group = [span]
-        
-        if current_group:
-            groups.append(current_group)
-        
-        return groups
-    
-    def _select_winner(self, group: List[Span]) -> Span:
-        """Select the winning span from a group of overlapping spans."""
-        if self.strategy == "keep_first":
-            # Return the first span in the list (by processing order)
-            return group[0]
-        
-        elif self.strategy == "keep_last":
-            # Return the last added span (assumes order is preserved)
-            return group[-1]
-        
-        elif self.strategy == "highest_confidence":
-            # Sort by score (descending), then by length (descending)
-            return max(group, key=lambda span: (
-                getattr(span._, "score", 0.0),
-                span.end - span.start
-            ))
