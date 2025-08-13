@@ -178,7 +178,12 @@ class ContextEnhancer(Pipe):
         # Update spans
         self._set_spans(doc, processed_spans)
         return doc
-    
+
+    def add_patterns(self, patterns: List[ContextPatternType]) -> None:
+        """Add patterns to the context enhancer."""
+        for pattern in patterns:
+            self._patterns.append(pattern)
+
     def _get_spans(self, doc: Doc) -> List[Span]:
         """Get current spans."""
         return (

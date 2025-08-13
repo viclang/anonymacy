@@ -17,9 +17,8 @@ class Anonymizer(Pipe):
         self,
         nlp: Language,
         name: str = "anonymizer",
-        operators: Dict[str, Union[str, NoArgOperator, TextOperator]] = None,
+        spans_key: str = "sc",
         style: str = "ent",
-        spans_key: str = "sc"
     ):
         """Initialize the Anonymizer component.
         
@@ -38,7 +37,7 @@ class Anonymizer(Pipe):
         self.name = name
         self.spans_key = spans_key
         self.style = style
-        self.operators = operators if operators else {}
+        self._operators = dict()
         
         # Register Doc extensions
         if not Doc.has_extension("anonymized_text"):
@@ -67,8 +66,7 @@ class Anonymizer(Pipe):
             anonymized_parts.append(doc.text[last_end:span.start_char])
             
             default_anonymized_value = f"[{span.label_.upper()}]"
-            operator = self.operators.get(span.label_)
-            
+            operator = self._operators.get(span.label_)
             if operator:
                 # Handle both string and function operators
                 if isinstance(operator, str):
@@ -123,7 +121,15 @@ class Anonymizer(Pipe):
         doc._.anonymized_spans = anonymized_spans
         
         return doc
+
     
+    def add_operators(self, operators: Dict[str, Union[str, NoArgOperator, TextOperator]]):
+        """Add custom operators for anonymization."""        
+        self._operators.update(operators)
+
+    def clear(self):
+        self._operators.clear()
+
     def _get_spans(self, doc: Doc) -> List[Span]:
         """Get spans from document based on style setting."""
         if self.style == "ent":

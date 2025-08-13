@@ -40,7 +40,6 @@ class Recognizer(Pipe):
         name: str = "recognizer",
         spans_key: Optional[str] = "sc",
         custom_matcher: Optional[CustomMatcherFunc] = None,
-        match_validator: Optional[Callable[[Span], bool]] = None,
         spans_filter: SpansFilterFunc = highest_confidence_filter,
         annotate_ents: bool = False,
         ents_filter: SpansFilterFunc = highest_confidence_filter,
@@ -54,7 +53,6 @@ class Recognizer(Pipe):
         self.name = name
         self.spans_key = spans_key
         self.custom_matcher = custom_matcher
-        self.match_validator = match_validator
         self.spans_filter = spans_filter
         self.ents_filter = ents_filter
         self.default_score = default_score
@@ -100,7 +98,7 @@ class Recognizer(Pipe):
                 span._.score = score
                 span._.source = self.name
 
-                if self.match_validator and not self.match_validator(span):
+                if self._validators and not self.match_validator(span):
                     continue
 
                 key = (start, end)
@@ -204,13 +202,24 @@ class Recognizer(Pipe):
                     self.nlp.vocab.strings.add(pattern_id)
                 )
 
+    def add_validators(self, validators: Dict[str, Callable[[Doc], bool]]) -> None:
+        """Add validation functions to the recognizer.
+
+        Args:
+            validators: A Dict of functions that take a Doc and return a bool.
+        """
+        self._validators.update(validators)
+
+    def match_validator(self, span: Span) -> bool:
+        return self._validators.get(span.label_, lambda x: True)(span)
+
     def clear(self) -> None:
         """Reset all patterns.
 
         RETURNS: None
         """
         self._patterns: List[PatternType] = []
-        self.match_validator = None
+        self._validators = {}
         self.custom_matcher = None
         self.matcher: Matcher = Matcher(
             self.nlp.vocab,

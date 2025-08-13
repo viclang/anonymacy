@@ -1,22 +1,14 @@
-from typing import Any, Dict, List, Union, Tuple, Optional
+from typing import List, Optional
 from spacy.language import Language
 from spacy.tokens import Doc, Span
-from spacy.matcher import Matcher
 from spacy.pipeline import Pipe
 import itertools
 from typing import (
-    Any,
-    Dict,
     Set,
     List,
     Optional,
     Callable,
-    Iterable,
-    Tuple,
-    Union,
-    TypedDict,
-    Required,
-    NotRequired,
+    Iterable
 )
 
 def highest_confidence_filter(*spans: Iterable["Span"]) -> List[Span]:

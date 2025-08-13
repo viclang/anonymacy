@@ -22,9 +22,10 @@ app = marimo.App(width="medium")
 def _():
     import marimo as mo
     from spacy import displacy
+    from spacy.tokens import Doc, Span
     import spacy
     from anonymacy import ContextEnhancer, Recognizer
-    return displacy, mo, spacy
+    return Span, displacy, mo, spacy
 
 
 @app.cell(hide_code=True)
@@ -37,7 +38,7 @@ def _(mo):
 
 
 @app.cell
-def _(displacy, mo, spacy, text_area):
+def _(Span, displacy, mo, spacy, text_area):
     custom_spacy_config = {
         "gliner_model": "E3-JSI/gliner-multi-pii-domains-v1",
         "chunk_size": 250,
@@ -75,18 +76,49 @@ def _(displacy, mo, spacy, text_area):
             {"SHAPE": "dd"}, {"IS_SPACE": True}, {"SHAPE": "ddd"}, {"IS_SPACE": True}, {"SHAPE": "ddd"}] },
     ])
 
-    
-    nlp.add_pipe("context_enhancer")
+    def elf_proef(span: Span) -> bool:
+        only_digits = "".join(c for c in span.text if c.isdigit())
+        if all(only_digits[0] == c for c in only_digits):
+            return False
+
+        if len(only_digits) == 8:
+            only_digits = "0" + only_digits
+
+        if len(only_digits) != 9:
+            return False
+
+        # 11-proef
+        total = 0
+        for char, factor in zip(only_digits, [9, 8, 7, 6, 5, 4, 3, 2, -1]):
+            total += int(char) * factor
+
+        return total % 11 == 0
+
+    recognizer.add_validators({
+        "BSN" : elf_proef
+    })
+
+    context_enhancer = nlp.add_pipe("context_enhancer")
+    context_enhancer.add_patterns([
+        { "label" : "BSN",
+          "pattern" : [ {"LEMMA": { "IN": [
+              "bsn",
+              "bsnnummer",
+              "bsn-nummer",
+              "burgerservice",
+              "burgerservicenummer",
+              "sofinummer",
+              "sofi-nummer",
+          ] } } ]
+        }
+    ])
+
     nlp.add_pipe("conflict_resolver")
 
-
-    anonymizer_config = {
-        "operators": {
-            "bsn": "FakeBSN"
-        }
-    }
-
-    nlp.add_pipe("anonymizer", config=anonymizer_config)
+    anonymizer = nlp.add_pipe("anonymizer")
+    anonymizer.add_operators({
+        "BSN": "FakeBSN"
+    })
 
     text = text_area.value
     doc = nlp(text)
