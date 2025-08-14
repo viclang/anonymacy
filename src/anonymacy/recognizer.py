@@ -88,22 +88,24 @@ class Recognizer(Pipe):
         )
 
         for match_id, start, end in matches:
-            if match_id in self._match_label_id_map and start != end:
-                pattern_info = self._match_label_id_map[match_id]
-                label = pattern_info["label"]
-                score = pattern_info.get("score", self.default_score)
-                
-                span = doc[start:end]
-                span.label_ = label
-                span._.score = score
-                span._.source = self.name
+            if match_id not in self._match_label_id_map or start == end:
+                continue
+            
+            pattern_info = self._match_label_id_map[match_id]
+            label = pattern_info["label"]
+            score = pattern_info.get("score", self.default_score)
+            
+            span = doc[start:end]
+            span.label_ = label
+            span._.score = score
+            span._.source = self.name
 
-                if self._validators and not self.match_validator(span):
-                    continue
+            if self._validators and not self._is_valid(span):
+                continue
 
-                key = (start, end)
-                if key not in spans_by_position or spans_by_position[key]._.score < score:
-                    spans_by_position[key] = span
+            key = (start, end)
+            if key not in spans_by_position or spans_by_position[key]._.score < score:
+                spans_by_position[key] = span
         
         if self.custom_matcher:
             custom_matches = self.custom_matcher(doc)
@@ -114,7 +116,7 @@ class Recognizer(Pipe):
                 if not hasattr(span._, "source") or not span._.source:
                     span._.source = self.name
                 
-                if self.match_validator and not self.match_validator(span):
+                if self._validators and not self._is_valid(span):
                     continue
 
                 key = (span.start, span.end)
@@ -210,7 +212,7 @@ class Recognizer(Pipe):
         """
         self._validators.update(validators)
 
-    def match_validator(self, span: Span) -> bool:
+    def _is_valid(self, span: Span) -> bool:
         return self._validators.get(span.label_, lambda x: True)(span)
 
     def clear(self) -> None:
