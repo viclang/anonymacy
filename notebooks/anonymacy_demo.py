@@ -2,7 +2,10 @@
 # requires-python = ">=3.9,<3.14"
 # dependencies = [
 #     "anonymacy",
+#     "marimo",
 #     "gliner-spacy",
+#     "gliner[tokenizers]",
+#     "hf_xet",
 #     "nl-core-news-sm @ https://github.com/explosion/spacy-models/releases/download/nl_core_news_sm-3.8.0/nl_core_news_sm-3.8.0-py3-none-any.whl",
 #     "spacy",
 # ]
@@ -14,33 +17,18 @@
 
 import marimo
 
-__generated_with = "0.14.17"
+__generated_with = "0.15.0"
 app = marimo.App(width="medium")
 
 
 @app.cell
 def _():
-    import marimo as mo
-    from spacy import displacy
-    from spacy.tokens import Doc, Span
-    import spacy
-    from anonymacy import ContextEnhancer, Recognizer
-    return Span, displacy, mo, spacy
+    SPACY_MODEL = "nl_core_news_sm"
 
-
-@app.cell(hide_code=True)
-def _(mo):
-    text_area = mo.ui.text_area(
-        value="Mijn naam is Anna de Vries en ik wil graag een melding doen over een probleem dat ik heb ervaren bij het Medisch Centrum Amsterdam. Tijdens mijn opname in het ziekenhuis vorig jaar ontving ik een onjuiste behandeling, wat heeft geleid tot ernstige bijwerkingen van het medicijn metoprolol. Ik heb dit meerdere keren besproken met mijn behandelend arts, maar zonder resultaat. Mijn bsnnummer is 376174316 en mijn telefoonnummer is 0612345678. Ik ben woonachtig aan de Dorpsstraat 42 in Haarlem en ben verzekerd bij Zorgzaam Verzekeringen. Ik werk zelf als verpleegkundige bij het Woonzorgcentrum De Lentehof, waar ik dagelijks mensen help met dementiezorg. Mijn e-mailadres is anna.devries1980@gmail.com en ik wil erop aandringen dat deze klacht serieus wordt genomen. De communicatie met de organisatie houdt te wensen over. Ik voel mij onvoldoende gehoord en wil dat hier iets aan wordt gedaan. Uiteindelijk wil ik benadrukken dat deze situatie mijn vertrouwen in de zorginstelling aanzienlijk heeft geschaad.",
-        rows= 10)
-    text_area
-    return (text_area,)
-
-
-@app.cell
-def _(Span, displacy, mo, spacy, text_area):
-    custom_spacy_config = {
-        "gliner_model": "E3-JSI/gliner-multi-pii-domains-v1",
+    SPACY_CONFIG = {
+        "gliner_model": "knowledgator/gliner-x-large",
+        # "gliner_model": "E3-JSI/gliner-multi-pii-domains-v1"
+        # "gliner_model": "urchade/gliner_multi-v2.1"
         "chunk_size": 250,
         "threshold": 0.5,
         "labels": [
@@ -53,65 +41,141 @@ def _(Span, displacy, mo, spacy, text_area):
             "ziekenhuis",
             "zorginstelling",
             "beroep",
-            "verzekering"
+            "verzekering",
         ],
         "style": "span",
-        "map_location": "cpu"
+        "map_location": "cpu",
     }
 
+    RECOGNIZER_PATTERNS = [
+        {
+            "label": "BSN",
+            "score": 0.4,
+            "pattern": [{"LENGTH": 9, "IS_DIGIT": True}],
+        },
+        {
+            "label": "BSN",
+            "score": 0.3,
+            "pattern": [{"LENGTH": 8, "IS_DIGIT": True}],
+        },
+        {
+            "label": "BSN",
+            "score": 0.1,
+            "pattern": [
+                {"SHAPE": "dd"},
+                {"TEXT": "."},
+                {"SHAPE": "ddd"},
+                {"TEXT": "."},
+                {"SHAPE": "ddd"},
+            ],
+        },
+        {
+            "label": "BSN",
+            "score": 0.1,
+            "pattern": [
+                {"SHAPE": "dd"},
+                {"TEXT": "-"},
+                {"SHAPE": "ddd"},
+                {"TEXT": "-"},
+                {"SHAPE": "ddd"},
+            ],
+        },
+        {
+            "label": "BSN",
+            "score": 0.1,
+            "pattern": [
+                {"SHAPE": "dd"},
+                {"IS_SPACE": True},
+                {"SHAPE": "ddd"},
+                {"IS_SPACE": True},
+                {"SHAPE": "ddd"},
+            ],
+        },
+    ]
+
+    CONTEXT_PATTERNS = [
+        {
+            "label": "BSN",
+            "pattern": [
+                {
+                    "LEMMA": {
+                        "IN": [
+                            "bsn",
+                            "bsnnummer",
+                            "bsn-nummer",
+                            "burgerservice",
+                            "burgerservicenummer",
+                            "sofinummer",
+                            "sofi-nummer",
+                        ]
+                    }
+                }
+            ],
+        },
+        {
+            "label": "PHONE_NUMBER",
+            "pattern": [
+                {
+                    "LEMMA": {
+                        "IN": [
+                            "telefoon",
+                            "mobiel",
+                            "telefoonnummer",
+                            "bellen",
+                            "mobiele telefoon",
+                        ]
+                    }
+                }
+            ],
+        },
+    ]
+    return CONTEXT_PATTERNS, RECOGNIZER_PATTERNS, SPACY_CONFIG, SPACY_MODEL
 
 
-    nlp = spacy.load("nl_core_news_sm", disable=["ner"])
-    nlp.add_pipe("gliner_spacy", config=custom_spacy_config)
+@app.cell
+def _():
+    import marimo as mo
+    from spacy import displacy
+    from spacy.tokens import Doc, Span
+    import spacy
+    from anonymacy import ContextEnhancer, Recognizer, conflict_resolver
+    from anonymacy import validator
+    return displacy, mo, spacy, validator
 
-    recognizer = nlp.add_pipe("recognizer", name="recognizer")
-    recognizer.add_patterns([
-        { "label" : "BSN", "score" : 0.4, "pattern": [{"LENGTH" : 9, "IS_DIGIT" : True}] },
-        { "label": "BSN", "score": 0.3, "pattern": [{"LENGTH": 8, "IS_DIGIT": True}] },
-        { "label": "BSN", "score": 0.1, "pattern": [
-            {"SHAPE": "dd"}, {"TEXT": "."}, {"SHAPE": "ddd"}, {"TEXT": "."}, {"SHAPE": "ddd"}] },
-        { "label": "BSN", "score": 0.1, "pattern": [
-            {"SHAPE": "dd"}, {"TEXT": "-"}, {"SHAPE": "ddd"}, {"TEXT": "-"}, {"SHAPE": "ddd"}] },
-        { "label": "BSN", "score": 0.1, "pattern": [
-            {"SHAPE": "dd"}, {"IS_SPACE": True}, {"SHAPE": "ddd"}, {"IS_SPACE": True}, {"SHAPE": "ddd"}] },
-    ])
 
-    def elf_proef(span: Span) -> bool:
-        only_digits = "".join(c for c in span.text if c.isdigit())
-        if all(only_digits[0] == c for c in only_digits):
-            return False
+@app.cell(hide_code=True)
+def _(mo):
+    text_area = mo.ui.text_area(
+        value="Mijn naam is Anna de Vries en ik wil graag een melding doen over een probleem dat ik heb ervaren bij het Medisch Centrum Amsterdam. Tijdens mijn opname in het ziekenhuis vorig jaar ontving ik een onjuiste behandeling, wat heeft geleid tot ernstige bijwerkingen van het medicijn metoprolol. Ik heb dit meerdere keren besproken met mijn behandelend arts, maar zonder resultaat. Mijn bsnnummer is 376174316 en mijn telefoonnummer is 0612345678. Ik ben woonachtig aan de Dorpsstraat 42 in Haarlem en ben verzekerd bij Zorgzaam Verzekeringen. Ik werk zelf als verpleegkundige bij het Woonzorgcentrum De Lentehof, waar ik dagelijks mensen help met dementiezorg. Mijn e-mailadres is anna.devries1980@gmail.com en ik wil erop aandringen dat deze klacht serieus wordt genomen. De communicatie met de organisatie houdt te wensen over. Ik voel mij onvoldoende gehoord en wil dat hier iets aan wordt gedaan. Uiteindelijk wil ik benadrukken dat deze situatie mijn vertrouwen in de zorginstelling aanzienlijk heeft geschaad.",
+        rows= 10)
+    text_area
+    return (text_area,)
 
-        if len(only_digits) == 8:
-            only_digits = "0" + only_digits
 
-        if len(only_digits) != 9:
-            return False
+@app.cell
+def _(
+    CONTEXT_PATTERNS,
+    RECOGNIZER_PATTERNS,
+    SPACY_CONFIG,
+    SPACY_MODEL,
+    displacy,
+    mo,
+    spacy,
+    text_area,
+    validator,
+):
+    nlp = spacy.load(SPACY_MODEL, disable=["ner"])
+    nlp.add_pipe("gliner_spacy", config=SPACY_CONFIG)
 
-        # 11-proef
-        total = 0
-        for char, factor in zip(only_digits, [9, 8, 7, 6, 5, 4, 3, 2, -1]):
-            total += int(char) * factor
-
-        return total % 11 == 0
+    recognizer = nlp.add_pipe("recognizer")
+    recognizer.add_patterns(RECOGNIZER_PATTERNS)
 
     recognizer.add_validators({
-        "BSN" : elf_proef
+        "BSN" : validator.elf_proef
     })
 
     context_enhancer = nlp.add_pipe("context_enhancer")
-    context_enhancer.add_patterns([
-        { "label" : "BSN",
-          "pattern" : [ {"LEMMA": { "IN": [
-              "bsn",
-              "bsnnummer",
-              "bsn-nummer",
-              "burgerservice",
-              "burgerservicenummer",
-              "sofinummer",
-              "sofi-nummer",
-          ] } } ]
-        }
-    ])
+    context_enhancer.add_patterns(CONTEXT_PATTERNS)
 
     nlp.add_pipe("conflict_resolver")
 

@@ -3,7 +3,15 @@ from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
 from spacy.matcher import Matcher, PhraseMatcher
 from spacy.matcher.levenshtein import levenshtein_compare
-from .conflict_resolver import highest_confidence_filter, SpansFilterFunc
+from anonymacy import span_filter
+from spacy import util
+from spacy.errors import Errors
+import srsly
+from spacy import util
+from spacy.util import SimpleFrozenList, ensure_path
+from pathlib import Path
+from spacy import registry
+
 from typing import (
     Any,
     Callable,
@@ -11,8 +19,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Sequence,
-    Set,
     Tuple,
     Union,
     cast,
@@ -27,10 +33,34 @@ class PatternType(TypedDict):
     score: NotRequired[float]
     id: NotRequired[str]
 
-# Simplified custom matcher - just one function
 CustomMatcherFunc = Callable[[Doc], List[Span]]
 
-@Language.factory("recognizer")
+SpansFilterFunc = Callable[[Iterable[Span], Iterable[Span]], Iterable[Span]]
+
+RECOGNIZER_DEFAULT_SPANS_KEY = "sc"
+
+# Compatibility function for registry
+def anonymacy_levenshtein_compare(s1: str, s2: str, max_dist: int) -> bool:
+    return levenshtein_compare(s1, s2, max_dist)
+
+@registry.misc("anonymacy.levenshtein_compare.v1")
+def make_levenshtein_compare():
+    return anonymacy_levenshtein_compare
+
+DEFAULT_RECOGNIZER_CONFIG = {
+    "spans_key": RECOGNIZER_DEFAULT_SPANS_KEY,
+    "custom_matcher": None,
+    "spans_filter": None,
+    "annotate_ents": False,
+    "ents_filter": {"@misc": "anonymacy.highest_confidence_filter.v1"},
+    "phrase_matcher_attr": None,
+    "matcher_fuzzy_compare": {"@misc": "anonymacy.levenshtein_compare.v1"},
+    "default_score": 0.6,
+    "validate_patterns": False,
+    "overwrite": False
+}
+
+@Language.factory("recognizer", assigns=["doc.spans"], default_config=DEFAULT_RECOGNIZER_CONFIG)
 class Recognizer(Pipe):
     """Base class for custom spaCy recognizers with automatic deduplication."""
     
@@ -38,13 +68,13 @@ class Recognizer(Pipe):
         self,
         nlp: Language,
         name: str = "recognizer",
-        spans_key: Optional[str] = "sc",
+        spans_key: Optional[str] = RECOGNIZER_DEFAULT_SPANS_KEY,
         custom_matcher: Optional[CustomMatcherFunc] = None,
-        spans_filter: SpansFilterFunc = highest_confidence_filter,
+        spans_filter: Optional[SpansFilterFunc] = None,
         annotate_ents: bool = False,
-        ents_filter: SpansFilterFunc = highest_confidence_filter,
+        ents_filter: SpansFilterFunc = span_filter.highest_confidence_filter,
         phrase_matcher_attr: Optional[Union[int, str]] = None,
-        matcher_fuzzy_compare: Callable = levenshtein_compare,
+        matcher_fuzzy_compare: Callable[[str, str, int], bool] = anonymacy_levenshtein_compare,
         default_score: float = 0.6,
         validate_patterns: bool = False,
         overwrite: bool = False,
@@ -76,6 +106,27 @@ class Recognizer(Pipe):
         matches = self.match(doc)
         self.set_annotations(doc, matches)
         return doc
+    
+    @property
+    def labels(self) -> Tuple[str, ...]:
+        """All labels present in the match patterns."""
+        return tuple(sorted(set([p["label"] for p in self._patterns])))
+
+    @property
+    def patterns(self) -> List[Dict[str, Any]]:
+        """Get all patterns that were added."""
+        return self._patterns
+
+    def __len__(self) -> int:
+        """The number of all labels added to the span ruler."""
+        return len(self.labels)
+
+    def __contains__(self, label: str) -> bool:
+        """Whether a label is present in the patterns."""
+        for label_id in self._match_label_id_map.values():
+            if label_id["label"] == label:
+                return True
+        return False
 
     def match(self, doc: Doc) -> List[Span]:
         """Find all matches in the document."""
@@ -234,13 +285,100 @@ class Recognizer(Pipe):
             validate=self.validate_patterns,
         )
 
+    def remove(self, label: str) -> None:
+        """Remove patterns by their label.
 
-    @property
-    def labels(self) -> Tuple[str, ...]:
-        """All labels present in the match patterns."""
-        return tuple(sorted(set([p["label"] for p in self._patterns])))
+        label (str): Label of the patterns to be removed.
+        """
+        if not any(p["label"] == label for p in self._patterns):
+            raise ValueError(
+                Errors.E1024.format(attr_type="label", label=label, component=self.name)
+            )
+        self._patterns = [p for p in self._patterns if p["label"] != label]
+        for m_label in self._match_label_id_map:
+            if self._match_label_id_map[m_label]["label"] == label:
+                m_label_str = self.nlp.vocab.strings.as_string(m_label)
+                if m_label_str in self.phrase_matcher:
+                    self.phrase_matcher.remove(m_label_str)
+                if m_label_str in self.matcher:
+                    self.matcher.remove(m_label_str)
+                del self._match_label_id_map[m_label]
 
-    @property
-    def patterns(self) -> List[Dict[str, Any]]:
-        """Get all patterns that were added."""
-        return self._patterns
+    def remove_by_id(self, pattern_id: str) -> None:
+        """Remove a pattern by its pattern ID.
+
+        pattern_id (str): ID of the pattern to be removed.
+        """
+        # Check if any pattern has the given ID
+        if not any(p.get("id") == pattern_id for p in self._patterns):
+            raise ValueError(
+                Errors.E1024.format(attr_type="ID", label=pattern_id, component=self.name)
+            )
+        
+        # Remove patterns from internal list
+        self._patterns = [p for p in self._patterns if p.get("id") != pattern_id]
+        
+        for m_label in self._match_label_id_map:
+            if self._match_label_id_map[m_label]["id"] == pattern_id:
+                m_label_str = self.nlp.vocab.strings.as_string(m_label)
+                if m_label_str in self.phrase_matcher:
+                    self.phrase_matcher.remove(m_label_str)
+                if m_label_str in self.matcher:
+                    self.matcher.remove(m_label_str)
+                del self._match_label_id_map[m_label]
+
+    def from_bytes(self, bytes_data: bytes, *, exclude: Iterable[str] = SimpleFrozenList()) -> "Recognizer":
+        """Load the span ruler from a bytestring.
+
+        bytes_data (bytes): The bytestring to load.
+        RETURNS (Recognizer): The loaded recognizer.
+
+        DOCS: https://spacy.io/api/spanruler#from_bytes
+        """
+        self.clear()
+        deserializers = {
+            "patterns": lambda b: self.add_patterns(srsly.json_loads(b)),
+        }
+        util.from_bytes(bytes_data, deserializers, exclude)
+        return self
+
+    def to_bytes(self, *, exclude: Iterable[str] = SimpleFrozenList()) -> bytes:
+        """Serialize the span ruler to a bytestring.
+
+        RETURNS (bytes): The serialized patterns.
+
+        DOCS: https://spacy.io/api/spanruler#to_bytes
+        """
+        serializers = {
+            "patterns": lambda: srsly.json_dumps(self.patterns),
+        }
+        return util.to_bytes(serializers, exclude)
+
+    def from_disk(
+        self, path: Union[str, Path], *, exclude: Iterable[str] = SimpleFrozenList()
+    ) -> "Recognizer":
+        """Load the span ruler from a directory.
+
+        path (Union[str, Path]): A path to a directory.
+        RETURNS (Recognizer): The loaded recognizer.
+        """
+        self.clear()
+        path = ensure_path(path)
+        deserializers = {
+            "patterns": lambda p: self.add_patterns(srsly.read_jsonl(p)),
+        }
+        util.from_disk(path, deserializers, {})
+        return self
+
+    def to_disk(
+        self, path: Union[str, Path], *, exclude: Iterable[str] = SimpleFrozenList()
+    ) -> None:
+        """Save the recognizer patterns to a directory.
+
+        path (Union[str, Path]): A path to a directory.
+        """
+        path = ensure_path(path)
+        serializers = {
+            "patterns": lambda p: srsly.write_jsonl(p, self.patterns),
+        }
+        util.to_disk(path, serializers, {})
