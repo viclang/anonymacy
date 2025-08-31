@@ -41,26 +41,27 @@ RECOGNIZER_DEFAULT_SPANS_KEY = "sc"
 
 # Compatibility function for registry
 def anonymacy_levenshtein_compare(s1: str, s2: str, max_dist: int) -> bool:
-    return levenshtein_compare(s1, s2, max_dist)
+    return anonymacy_levenshtein_compare(s1, s2, max_dist)
 
-@registry.misc("anonymacy.levenshtein_compare.v1")
-def make_levenshtein_compare():
-    return anonymacy_levenshtein_compare
+@registry.misc("spacy.levenshtein_compare.v1")
+def make_levenshtein_compare(levenshtein_compare=levenshtein_compare):
+    return levenshtein_compare
 
 DEFAULT_RECOGNIZER_CONFIG = {
     "spans_key": RECOGNIZER_DEFAULT_SPANS_KEY,
-    "custom_matcher": None,
+    "custom_matchers": None,
+    "validators": None,
     "spans_filter": None,
     "annotate_ents": False,
     "ents_filter": {"@misc": "anonymacy.highest_confidence_filter.v1"},
     "phrase_matcher_attr": None,
-    "matcher_fuzzy_compare": {"@misc": "anonymacy.levenshtein_compare.v1"},
+    "matcher_fuzzy_compare": {"@misc": "spacy.levenshtein_compare.v1"},
     "default_score": 0.6,
     "validate_patterns": False,
     "overwrite": False
 }
 
-@Language.factory("recognizer", assigns=["doc.spans"], default_config=DEFAULT_RECOGNIZER_CONFIG)
+@Language.factory("recognizer", assigns=["doc.spans"], default_config=DEFAULT_RECOGNIZER_CONFIG,)
 class Recognizer(Pipe):
     """Base class for custom spaCy recognizers with automatic deduplication."""
     
@@ -69,7 +70,8 @@ class Recognizer(Pipe):
         nlp: Language,
         name: str = "recognizer",
         spans_key: Optional[str] = RECOGNIZER_DEFAULT_SPANS_KEY,
-        custom_matcher: Optional[CustomMatcherFunc] = None,
+        custom_matchers: Optional[Dict[str, Callable[[Doc], List[Span]]]] = None,
+        validators: Optional[Dict[str, Callable[[Span], bool]]] = None,
         spans_filter: Optional[SpansFilterFunc] = None,
         annotate_ents: bool = False,
         ents_filter: SpansFilterFunc = span_filter.highest_confidence_filter,
@@ -82,7 +84,8 @@ class Recognizer(Pipe):
         self.nlp = nlp
         self.name = name
         self.spans_key = spans_key
-        self.custom_matcher = custom_matcher
+        self.custom_matchers: Dict[str, Callable[[Doc], List[Span]]] = custom_matchers or {}
+        self.validators: Dict[str, Callable[[Span], bool]] = validators or {}
         self.spans_filter = spans_filter
         self.ents_filter = ents_filter
         self.default_score = default_score
@@ -93,7 +96,6 @@ class Recognizer(Pipe):
         self.validate_patterns = validate_patterns
         self.overwrite = overwrite
         self.clear()
-                        
         # Set up span extensions
         if not Span.has_extension("score"):
             Span.set_extension("score", default=0.0)
@@ -110,7 +112,11 @@ class Recognizer(Pipe):
     @property
     def labels(self) -> Tuple[str, ...]:
         """All labels present in the match patterns."""
-        return tuple(sorted(set([p["label"] for p in self._patterns])))
+        labels = [p["label"] for p in self._patterns]
+        if self._custom_matchers:
+            labels.extend(self._custom_matchers.keys())
+
+        return tuple(sorted(set(labels)))
 
     @property
     def patterns(self) -> List[Dict[str, Any]]:
@@ -130,7 +136,7 @@ class Recognizer(Pipe):
 
     def match(self, doc: Doc) -> List[Span]:
         """Find all matches in the document."""
-        spans_by_position = {}
+        spans = []
         
         # Get matches from the main pattern matcher
         matches = cast(
@@ -154,28 +160,29 @@ class Recognizer(Pipe):
             if self._validators and not self._is_valid(span):
                 continue
 
-            key = (start, end)
-            if key not in spans_by_position or spans_by_position[key]._.score < score:
-                spans_by_position[key] = span
-        
-        if self.custom_matcher:
-            custom_matches = self.custom_matcher(doc)
-            
-            for span in custom_matches:
-                if not hasattr(span._, "score") or span._.score is None:
-                    span._.score = self.default_score
-                if not hasattr(span._, "source") or not span._.source:
-                    span._.source = self.name
-                
-                if self._validators and not self._is_valid(span):
-                    continue
+            spans.append(span)
 
-                key = (span.start, span.end)
-                if key not in spans_by_position or spans_by_position[key]._.score < span._.score:
-                    spans_by_position[key] = span
-        
-        return sorted(spans_by_position.values(), key=lambda s: (s.start, s.end))
-        
+        if self._custom_matchers:
+            for label, custom_matcher in self._custom_matchers.items():
+                custom_matches = custom_matcher(doc)
+                
+                for span in custom_matches:
+                    if not span.label_:
+                        span.label_ = label
+
+                    if not hasattr(span._, "score") or span._.score is None:
+                        span._.score = self.default_score
+
+                    if not hasattr(span._, "source") or not span._.source:
+                        span._.source = self.name
+                
+                    if self._validators and not self._is_valid(span):
+                        continue
+
+                    spans.append(span)
+
+        return sorted(spans, key=lambda s: (s.start, s.end))
+
     def set_annotations(self, doc, matches):
         """Modify the document in place"""
         if self.spans_key:
@@ -255,11 +262,19 @@ class Recognizer(Pipe):
                     self.nlp.vocab.strings.add(pattern_id)
                 )
 
-    def add_validators(self, validators: Dict[str, Callable[[Doc], bool]]) -> None:
+    def add_custom_matchers(self, matchers: Dict[str, Callable[[Doc], List[Span]]]) -> None:
+        """Add custom matchers to the recognizer.
+
+        Args:
+            matchers (Dict[str, Callable[[Doc], List[Span]]]): A dictionary of custom matchers.
+        """
+        self._custom_matchers.update(matchers)
+
+    def add_validators(self, validators: Dict[str, Callable[[Span], bool]]) -> None:
         """Add validation functions to the recognizer.
 
         Args:
-            validators: A Dict of functions that take a Doc and return a bool.
+            validators: A Dict of functions that take a Span and return a bool.
         """
         self._validators.update(validators)
 
@@ -268,12 +283,10 @@ class Recognizer(Pipe):
 
     def clear(self) -> None:
         """Reset all patterns.
-
-        RETURNS: None
         """
         self._patterns: List[PatternType] = []
         self._validators = {}
-        self.custom_matcher = None
+        self._custom_matchers = {}
         self.matcher: Matcher = Matcher(
             self.nlp.vocab,
             validate=self.validate_patterns,

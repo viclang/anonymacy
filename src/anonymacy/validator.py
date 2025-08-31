@@ -1,6 +1,10 @@
 from spacy import registry
 from spacy.tokens import Span
 
+@registry.misc("anonymacy.elf_proef.v1")
+def make_elf_proef():
+    return elf_proef
+
 def elf_proef(span: Span) -> bool:
     only_digits = "".join(c for c in span.text if c.isdigit())
     if all(only_digits[0] == c for c in only_digits):
@@ -18,6 +22,3 @@ def elf_proef(span: Span) -> bool:
 
     return total % 11 == 0
 
-@registry.misc("anonymacy.elf_proef.v1")
-def make_elf_proef():
-    return elf_proef
