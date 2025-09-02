@@ -29,15 +29,14 @@ def _():
     from spacy.tokens import Doc, Span
     import spacy
     from anonymacy import ContextEnhancer, Recognizer, conflict_resolver
-    from spacy.util import registry
-    from anonymacy import validator, util
-    import anonymacy
+    from anonymacy.util import registry
+    from anonymacy import validator
     from faker import Faker
-    return Faker, displacy, mo, spacy, util, validator
+    return Faker, displacy, mo, registry, spacy, validator
 
 
 @app.cell
-def _(Faker, util, validator):
+def _(Faker, registry, validator):
     SPACY_MODEL = "nl_core_news_sm"
 
     SPACY_CONFIG = {
@@ -145,12 +144,12 @@ def _(Faker, util, validator):
         },
     ]
 
-    validators = util.register_validators({
+    validators = registry.validators({
         "BSN" : validator.elf_proef,
     })
 
     fake = Faker("nl_NL")
-    operators = util.register_operators({
+    operators = registry.operators({
         "persoon" : fake.name
     })
     return (
@@ -194,12 +193,7 @@ def _(
 
     context_enhancer = nlp.add_pipe("context_enhancer")
     context_enhancer.add_patterns(CONTEXT_PATTERNS)
-    #nlp.to_disk("./recognizers")
 
-    nlp2 = spacy.load("./recognizers")
-    print(nlp2.pipe_names)
-    recognizer2 = nlp2.get_pipe("recognizer")
-    print(recognizer2.validators)
     nlp.add_pipe("conflict_resolver")
 
     anonymizer = nlp.add_pipe("anonymizer")

@@ -84,8 +84,6 @@ class Recognizer(Pipe):
         self.nlp = nlp
         self.name = name
         self.spans_key = spans_key
-        self.custom_matchers: Dict[str, Callable[[Doc], List[Span]]] = custom_matchers or {}
-        self.validators: Dict[str, Callable[[Span], bool]] = validators or {}
         self.spans_filter = spans_filter
         self.ents_filter = ents_filter
         self.default_score = default_score
@@ -96,6 +94,10 @@ class Recognizer(Pipe):
         self.validate_patterns = validate_patterns
         self.overwrite = overwrite
         self.clear()
+
+        self._custom_matchers: Dict[str, Callable[[Doc], List[Span]]] = custom_matchers or {}
+        self._validators: Dict[str, Callable[[Span], bool]] = validators or {}
+
         # Set up span extensions
         if not Span.has_extension("score"):
             Span.set_extension("score", default=0.0)
@@ -156,7 +158,6 @@ class Recognizer(Pipe):
             span.label_ = label
             span._.score = score
             span._.source = self.name
-
             if self._validators and not self._is_valid(span):
                 continue
 
@@ -175,7 +176,7 @@ class Recognizer(Pipe):
 
                     if not hasattr(span._, "source") or not span._.source:
                         span._.source = self.name
-                
+
                     if self._validators and not self._is_valid(span):
                         continue
 
@@ -285,8 +286,8 @@ class Recognizer(Pipe):
         """Reset all patterns.
         """
         self._patterns: List[PatternType] = []
-        self._validators = {}
-        self._custom_matchers = {}
+        self._validators: Dict[str, Callable[[Span], bool]] = {}
+        self._custom_matchers: Dict[str, Callable[[Doc], List[Span]]] = {}
         self.matcher: Matcher = Matcher(
             self.nlp.vocab,
             validate=self.validate_patterns,
