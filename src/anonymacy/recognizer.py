@@ -27,6 +27,9 @@ from typing import (
     Required,
     NotRequired,
 )
+import logging
+
+logger = logging.getLogger("anonymacy.recognizer")
 
 class PatternType(TypedDict):
     label: Required[str]
@@ -82,7 +85,7 @@ class Recognizer(Pipe):
         self.spans_key = spans_key
         self.spans_filter = spans_filter
         self.ents_filter = ents_filter
-        self.default_score = default_score
+        self.default_score = min(default_score, 1.0)
         self.annotate_ents = annotate_ents
         self.phrase_matcher_attr = phrase_matcher_attr
         self.matcher_fuzzy_compare = matcher_fuzzy_compare
@@ -138,12 +141,11 @@ class Recognizer(Pipe):
             
             pattern_info = self._match_label_id_map[match_id]
             label = pattern_info["label"]
-            score = pattern_info.get("score", self.default_score)
+            score = min(pattern_info.get("score", self.default_score), 1.0)
             
             span = doc[start:end]
             span.label_ = label
             span._.score = score
-            span._.source = self.name
             if self._validators and not self._is_valid(span):
                 continue
 
@@ -157,13 +159,13 @@ class Recognizer(Pipe):
                     if not span.label_:
                         span.label_ = label
 
-                    if not hasattr(span._, "score") or span._.score is None:
+                    if getattr(span._, "score", 0.0) == 0.0:
                         span._.score = self.default_score
-
-                    if not hasattr(span._, "source") or not span._.source:
-                        span._.source = self.name
+                    else:
+                        span._.score = min(span._.score, 1.0)
 
                     if self._validators and not self._is_valid(span):
+                        logger.debug("dropped span %r label=%s validator=False", span.text, span.label_)
                         continue
 
                     spans.append(span)

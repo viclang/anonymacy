@@ -60,8 +60,8 @@ class ConflictResolver(Pipe):
             return doc
         
         # Resolve conflicts
-        resolved_spans = self.spans_filter(spans)
-        
+        resolved_spans = self.spans_filter(spans) if self.spans_filter is not None else spans
+
         # Apply threshold filtering
         if self.threshold > 0.0:
             resolved_spans = [
