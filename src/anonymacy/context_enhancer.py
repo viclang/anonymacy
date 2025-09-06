@@ -36,9 +36,7 @@ class ContextEnhancer(Pipe):
         confidence_boost: float = 0.35,
         min_enhanced_score: float = 0.4,
         context_window: Tuple[int, int] = (5, 2),
-        allow_dependency_link: bool = True,
-        ignore_recognizer_context: bool = False,
-        ignore_sources: List[str] = ["unknown"]
+        allow_dependency_link: bool = True
     ):
         """Initialize ContextEnhancer.
         
@@ -65,43 +63,22 @@ class ContextEnhancer(Pipe):
         self.allow_dependency_link = allow_dependency_link
         self.style = style
         self.spans_key = spans_key
-        self.ignore_recognizer_context = ignore_recognizer_context
-        self.ignore_sources = ignore_sources
 
         # Store our own patterns
         self._patterns = patterns if patterns else []
-
-        # Ensure extensions exist
-        if not Span.has_extension("score"):
-            Span.set_extension("score", default=0.0)
-        if not Span.has_extension("context"):
-            Span.set_extension("context", default=[])
 
     def __call__(self, doc: Doc) -> Doc:
         """Process document."""
         # Get spans
         spans = self._get_spans(doc)
-        if not spans:
+        if not spans or not self._patterns:
             return doc
-        
-        # Collect all patterns
-        all_patterns = []
-        all_patterns.extend(self._patterns)
-        
-        # Collect patterns from recognizers unless ignoring them
-        if not self.ignore_recognizer_context:
-            for name, pipe in self.nlp.pipeline:
-                if hasattr(pipe, 'context_patterns') and pipe.context_patterns:
-                    all_patterns.extend(pipe.context_patterns)
-        
-        if not all_patterns:
-            return doc
-        
+                        
         # Build matcher with all patterns
         matcher = Matcher(self.nlp.vocab)
         pattern_map = {}  # Maps pattern_id to pattern config
         
-        for idx, pattern_config in enumerate(all_patterns):            
+        for idx, pattern_config in enumerate(self._patterns):            
             label = pattern_config["label"]
             pattern_list = pattern_config["pattern"]
             invalidate = pattern_config.get("invalidate", False)
@@ -127,13 +104,6 @@ class ContextEnhancer(Pipe):
         # Process each span
         processed_spans = []
         for span in spans:
-
-            # Skip if source is in ignore list
-            source = getattr(span._, "source", "unknown")
-            if source in self.ignore_sources:
-                processed_spans.append(span)
-                continue
-
             # Skip if already enhanced
             if hasattr(span._, "context") and span._.context:
                 processed_spans.append(span)

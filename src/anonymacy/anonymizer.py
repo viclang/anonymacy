@@ -28,9 +28,6 @@ class Anonymizer(Pipe):
         self.style = style
         self._operators: Dict[str, Union[str, NoArgOperator, TextOperator]] = {}
 
-        if not Doc.has_extension("anonymized"):
-            Doc.set_extension("anonymized", default=None)
-
     def __call__(self, doc: Doc) -> Doc:
         """
         Process a document and attach an anonymised copy under `doc._.anonymized`.
@@ -85,39 +82,15 @@ class Anonymizer(Pipe):
         return operator(text)
 
     def _make_anonymized_doc(self, doc: Doc) -> Doc:
-        spans = sorted(self._get_spans(doc), key=lambda span: span.start_char)
+        spans = sorted(self._get_spans(doc), key=lambda s: s.start_char)
         if not spans:
-            return self.nlp.make_doc(doc.text)
+            return doc.copy()
 
-        parts, offset, entity_starts, entity_ends, entity_labels = [], 0, [], [], []
-
-        for span in spans:
-            parts.append(doc.text[offset : span.start_char])
-            replacement = self._apply_operator(span.label_, span.text)
-            parts.append(replacement)
-
-            entity_starts.append(len("".join(parts[:-1])))
-            entity_ends.append(entity_starts[-1] + len(replacement))
-            entity_labels.append(span.label_)
-
-            offset = span.end_char
-        parts.append(doc.text[offset:])
-
-        new_text = "".join(parts)
-        new_doc = self.nlp.make_doc(new_text)
-
-        entities = [
-            new_doc.char_span(start, end, label=label)
-            for start, end, label in zip(entity_starts, entity_ends, entity_labels)
-            if start is not None and end is not None
-        ]
-        entities = [entity for entity in entities if entity is not None]
-
-        if self.style == "ent":
-            new_doc.ents = entities
-        else:
-            new_doc.spans[self.spans_key] = entities
-
+        new_doc = doc.copy()
+        with new_doc.retokenize() as retokenizer:
+            for span in reversed(spans):
+                replacement = self._apply_operator(span.label_, span.text)
+                retokenizer.merge(new_doc[span.start:span.end], attrs={"LEMMA": replacement.lower()})
         return new_doc
 
     def from_bytes(
