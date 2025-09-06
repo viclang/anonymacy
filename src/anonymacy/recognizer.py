@@ -343,8 +343,8 @@ class Recognizer(Pipe):
         self.clear()
         deserializers = {
             "patterns": lambda b: self.add_patterns(srsly.json_loads(b)),
-            "custom_matchers": lambda b: self.add_custom_matchers(pickle.loads(b)),
-            "validators": lambda b: self.add_validators(pickle.loads(b)),
+            "custom_matchers": lambda b: self.add_custom_matchers(srsly.read_msgpack(b)),
+            "validators": lambda b: self.add_validators(srsly.read_msgpack(b)),
         }
         util.from_bytes(bytes_data, deserializers)
         return self
@@ -356,8 +356,8 @@ class Recognizer(Pipe):
         """
         serializers = {
             "patterns": lambda: srsly.json_dumps(self.patterns),
-            "custom_matchers": lambda: pickle.dumps(self._custom_matchers),
-            "validators": lambda: pickle.dumps(self._validators),
+            "custom_matchers": lambda: srsly.write_msgpack(self._custom_matchers),
+            "validators": lambda: srsly.write_msgpack(self._validators),
         }
         return util.to_bytes(serializers)
 
@@ -371,10 +371,11 @@ class Recognizer(Pipe):
         """
         self.clear()
         path = ensure_path(path)
+
         deserializers = {
             "patterns": lambda p: self.add_patterns(srsly.read_jsonl(p)),
-            "custom_matchers": lambda p: self.add_custom_matchers(pickle.load(open(p, "rb"))),
-            "validators": lambda p: self.add_validators(pickle.load(open(p, "rb"))),
+            "custom_matchers": lambda p: self.add_custom_matchers(srsly.read_msgpack(p)),
+            "validators": lambda p: self.add_validators(srsly.read_msgpack(p)),
         }
         util.from_disk(path, deserializers, {})
         return self
@@ -387,9 +388,15 @@ class Recognizer(Pipe):
         path (Union[str, Path]): A path to a directory.
         """
         path = ensure_path(path)
+
+        
+        def _write_pickle(p: Path) -> None:
+            with open(p, "wb") as f:
+                pickle.dump(self._operators, f)
+
         serializers = {
             "patterns": lambda p: srsly.write_jsonl(p, self.patterns),
-            "custom_matchers": lambda p: pickle.dump(self._custom_matchers, open(p, "wb")),
-            "validators": lambda p: pickle.dump(self._validators, open(p, "wb")),
+            "custom_matchers": lambda p: srsly.write_msgpack(p, self._custom_matchers),
+            "validators": lambda p: srsly.write_msgpack(p, self._validators),
         }
         util.to_disk(path, serializers, {})

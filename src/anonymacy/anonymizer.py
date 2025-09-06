@@ -4,8 +4,9 @@ from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
 from spacy import util
 from spacy.util import ensure_path, SimpleFrozenList
+from anonymacy.span_filter import highest_confidence_filter
 from pathlib import Path
-import pickle
+import srsly
 
 NoArgOperator = Callable[[], str]
 TextOperator = Callable[[str], str]
@@ -60,7 +61,8 @@ class Anonymizer(Pipe):
     def _get_spans(self, doc: Doc) -> List[Span]:
         if self.style == "ent":
             return list(doc.ents)
-        return list(doc.spans.get(self.spans_key, []))
+        spans = list(doc.spans.get(self.spans_key, []))
+        return highest_confidence_filter(spans)
 
     def _apply_operator(self, label: str, text: str) -> str:
         operator = self._operators.get(label)
@@ -139,7 +141,7 @@ class Anonymizer(Pipe):
             self, with operators restored.
         """
         self.clear()
-        deserializers = {"operators": lambda b: self._operators.update(pickle.loads(b))}
+        deserializers = {"operators": lambda b: self._operators.update(srsly.read_msgpack(b))}
         util.from_bytes(bytes_data, deserializers)
         return self
 
@@ -159,7 +161,7 @@ class Anonymizer(Pipe):
         bytes
             Pickled operators dictionary.
         """
-        serializers = {"operators": lambda: pickle.dumps(self._operators)}
+        serializers = {"operators": lambda: srsly.write_msgpack(self._operators)}
         return util.to_bytes(serializers)
 
     def from_disk(
@@ -186,7 +188,7 @@ class Anonymizer(Pipe):
         self.clear()
         path = ensure_path(path)
         deserializers = {
-            "operators": lambda p: self._operators.update(pickle.load(open(p, "rb")))
+            "operators": lambda p: self._operators.update(srsly.read_msgpack(p))
         }
         util.from_disk(path, deserializers, {})
         return self
@@ -205,5 +207,5 @@ class Anonymizer(Pipe):
             Ignored; kept for compatibility with spaCy's serialisation protocol.
         """
         path = ensure_path(path)
-        serializers = {"operators": lambda p: pickle.dump(self._operators, open(p, "wb"))}
+        serializers = {"operators": lambda p: srsly.write_msgpack(p, self._operators)}
         util.to_disk(path, serializers, {})
