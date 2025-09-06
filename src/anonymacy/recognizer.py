@@ -235,12 +235,10 @@ class Recognizer(Pipe):
         except ValueError:
             subsequent_pipes = []
 
+        docs = list(self.nlp.pipe(phrase_pattern_texts))
         with self.nlp.select_pipes(disable=subsequent_pipes):
             # Process phrase patterns through the pipeline to tokenize them
-            for pattern_id, pattern_doc in zip(
-                phrase_pattern_ids,
-                self.nlp.pipe(phrase_pattern_texts),
-            ):
+            for pattern_id, pattern_doc in zip(phrase_pattern_ids, docs):
                 # Add the tokenized pattern to phrase_matcher
                 label_id = self.nlp.vocab.strings.add(pattern_id)
                 self.phrase_matcher.add(label_id, [pattern_doc])
