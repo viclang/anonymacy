@@ -76,9 +76,9 @@ class ContextEnhancer(Pipe):
         # Ensure extensions exist
         if not Span.has_extension("score"):
             Span.set_extension("score", default=0.0)
-        if not Span.has_extension("supportive_context"):
-            Span.set_extension("supportive_context", default=[])
-    
+        if not Span.has_extension("context"):
+            Span.set_extension("context", default=[])
+
     def __call__(self, doc: Doc) -> Doc:
         """Process document."""
         # Get spans
@@ -141,12 +141,12 @@ class ContextEnhancer(Pipe):
                 continue
 
             # Skip if already enhanced
-            if hasattr(span._, "supportive_context") and span._.supportive_context:
+            if hasattr(span._, "context") and span._.context:
                 processed_spans.append(span)
                 continue
          
             should_invalidate = False
-            supportive_context = []
+            context = []
             
             # Check all matches for this span
             for match_id, start, end in matches:
@@ -163,14 +163,14 @@ class ContextEnhancer(Pipe):
                         break  # No need to continue if invalidating
                     else:
                         context_text = extended_doc[start:end].text
-                        supportive_context.append(context_text)
+                        context.append(context_text)
             
             # Apply results
             if should_invalidate:
                 continue  # Skip invalidated spans
             
-            if supportive_context:
-                enhanced_span = self._create_enhanced_span(span, supportive_context)
+            if context:
+                enhanced_span = self._create_enhanced_span(span, context)
                 processed_spans.append(enhanced_span)
             else:
                 processed_spans.append(span)
@@ -246,6 +246,6 @@ class ContextEnhancer(Pipe):
         )
         
         enhanced._.score = new_score
-        enhanced._.supportive_context = context
+        enhanced._.context = context
         
         return enhanced

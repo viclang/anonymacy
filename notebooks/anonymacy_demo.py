@@ -29,14 +29,13 @@ def _():
     from spacy.tokens import Doc, Span
     import spacy
     from anonymacy import ContextEnhancer, Recognizer, conflict_resolver
-    from anonymacy.util import registry
     from anonymacy import validator
     from faker import Faker
-    return Faker, displacy, mo, registry, spacy, validator
+    return Faker, displacy, mo, spacy, validator
 
 
 @app.cell
-def _(Faker, registry, validator):
+def _(Faker, validator):
     SPACY_MODEL = "nl_core_news_sm"
 
     SPACY_CONFIG = {
@@ -144,21 +143,21 @@ def _(Faker, registry, validator):
         },
     ]
 
-    validators = registry.validators({
+    VALIDATORS = {
         "BSN" : validator.elf_proef,
-    })
+    }
 
     fake = Faker("nl_NL")
-    operators = registry.operators({
+    OPERATORS = {
         "persoon" : fake.name
-    })
+    }
     return (
         CONTEXT_PATTERNS,
+        OPERATORS,
         RECOGNIZER_PATTERNS,
         SPACY_CONFIG,
         SPACY_MODEL,
-        operators,
-        validators,
+        VALIDATORS,
     )
 
 
@@ -174,22 +173,22 @@ def _(mo):
 @app.cell
 def _(
     CONTEXT_PATTERNS,
+    OPERATORS,
     RECOGNIZER_PATTERNS,
     SPACY_CONFIG,
     SPACY_MODEL,
+    VALIDATORS,
     displacy,
     mo,
-    operators,
     spacy,
     text_area,
-    validators,
 ):
     nlp = spacy.load(SPACY_MODEL, disable=["ner"])
     nlp.add_pipe("gliner_spacy", config=SPACY_CONFIG)
-    recognizer = nlp.add_pipe("recognizer", config={
-        "validators": validators,
-    })
+
+    recognizer = nlp.add_pipe("recognizer")
     recognizer.add_patterns(RECOGNIZER_PATTERNS)
+    recognizer.add_validators(VALIDATORS)
 
     context_enhancer = nlp.add_pipe("context_enhancer")
     context_enhancer.add_patterns(CONTEXT_PATTERNS)
@@ -197,7 +196,7 @@ def _(
     nlp.add_pipe("conflict_resolver")
 
     anonymizer = nlp.add_pipe("anonymizer")
-    anonymizer.add_operators(operators)
+    anonymizer.add_operators(OPERATORS)
 
     text = text_area.value
     doc = nlp(text)
@@ -223,18 +222,19 @@ def _(
     )
 
     mo.iframe(html, height=400)
-    return (doc,)
+    return doc, text
 
 
 @app.cell
-def _(doc):
-    print(doc._.anonymized_text)
+def _(loaded, text):
+    result = loaded(text)
+    print(result._.anonymized)
     return
 
 
 @app.cell
 def _(doc):
-    print(doc._.anonymized_spans)
+    print(doc._.anonymized)
     return
 
 

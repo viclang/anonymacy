@@ -11,6 +11,7 @@ from spacy import util
 from spacy.util import SimpleFrozenList, ensure_path
 from pathlib import Path
 from spacy import registry
+import pickle
 
 from typing import (
     Any,
@@ -49,8 +50,6 @@ def make_levenshtein_compare(levenshtein_compare=levenshtein_compare):
 
 DEFAULT_RECOGNIZER_CONFIG = {
     "spans_key": RECOGNIZER_DEFAULT_SPANS_KEY,
-    "custom_matchers": None,
-    "validators": None,
     "spans_filter": None,
     "annotate_ents": False,
     "ents_filter": {"@misc": "anonymacy.highest_confidence_filter.v1"},
@@ -63,15 +62,12 @@ DEFAULT_RECOGNIZER_CONFIG = {
 
 @Language.factory("recognizer", assigns=["doc.spans"], default_config=DEFAULT_RECOGNIZER_CONFIG,)
 class Recognizer(Pipe):
-    """Base class for custom spaCy recognizers with automatic deduplication."""
     
     def __init__(
         self,
         nlp: Language,
         name: str = "recognizer",
         spans_key: Optional[str] = RECOGNIZER_DEFAULT_SPANS_KEY,
-        custom_matchers: Optional[Dict[str, Callable[[Doc], List[Span]]]] = None,
-        validators: Optional[Dict[str, Callable[[Span], bool]]] = None,
         spans_filter: Optional[SpansFilterFunc] = None,
         annotate_ents: bool = False,
         ents_filter: SpansFilterFunc = span_filter.highest_confidence_filter,
@@ -94,9 +90,6 @@ class Recognizer(Pipe):
         self.validate_patterns = validate_patterns
         self.overwrite = overwrite
         self.clear()
-
-        self._custom_matchers: Dict[str, Callable[[Doc], List[Span]]] = custom_matchers or {}
-        self._validators: Dict[str, Callable[[Span], bool]] = validators or {}
 
         # Set up span extensions
         if not Span.has_extension("score"):
@@ -346,27 +339,27 @@ class Recognizer(Pipe):
 
         bytes_data (bytes): The bytestring to load.
         RETURNS (Recognizer): The loaded recognizer.
-
-        DOCS: https://spacy.io/api/spanruler#from_bytes
         """
         self.clear()
         deserializers = {
             "patterns": lambda b: self.add_patterns(srsly.json_loads(b)),
+            "custom_matchers": lambda b: self.add_custom_matchers(pickle.loads(b)),
+            "validators": lambda b: self.add_validators(pickle.loads(b)),
         }
-        util.from_bytes(bytes_data, deserializers, exclude)
+        util.from_bytes(bytes_data, deserializers)
         return self
 
     def to_bytes(self, *, exclude: Iterable[str] = SimpleFrozenList()) -> bytes:
         """Serialize the span ruler to a bytestring.
 
         RETURNS (bytes): The serialized patterns.
-
-        DOCS: https://spacy.io/api/spanruler#to_bytes
         """
         serializers = {
             "patterns": lambda: srsly.json_dumps(self.patterns),
+            "custom_matchers": lambda: pickle.dumps(self._custom_matchers),
+            "validators": lambda: pickle.dumps(self._validators),
         }
-        return util.to_bytes(serializers, exclude)
+        return util.to_bytes(serializers)
 
     def from_disk(
         self, path: Union[str, Path], *, exclude: Iterable[str] = SimpleFrozenList()
@@ -380,6 +373,8 @@ class Recognizer(Pipe):
         path = ensure_path(path)
         deserializers = {
             "patterns": lambda p: self.add_patterns(srsly.read_jsonl(p)),
+            "custom_matchers": lambda p: self.add_custom_matchers(pickle.load(open(p, "rb"))),
+            "validators": lambda p: self.add_validators(pickle.load(open(p, "rb"))),
         }
         util.from_disk(path, deserializers, {})
         return self
@@ -394,5 +389,7 @@ class Recognizer(Pipe):
         path = ensure_path(path)
         serializers = {
             "patterns": lambda p: srsly.write_jsonl(p, self.patterns),
+            "custom_matchers": lambda p: pickle.dump(self._custom_matchers, open(p, "wb")),
+            "validators": lambda p: pickle.dump(self._validators, open(p, "wb")),
         }
         util.to_disk(path, serializers, {})
