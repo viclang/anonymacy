@@ -5,6 +5,7 @@ from spacy.pipeline import Pipe
 from spacy import util
 from spacy.util import ensure_path, SimpleFrozenList
 from anonymacy.span_filter import highest_confidence_filter
+from anonymacy.util import read_pickle, write_pickle
 from pathlib import Path
 import srsly
 
@@ -141,7 +142,7 @@ class Anonymizer(Pipe):
             self, with operators restored.
         """
         self.clear()
-        deserializers = {"operators": lambda b: self._operators.update(srsly.read_msgpack(b))}
+        deserializers = {"operators": lambda b: self._operators.update(srsly.pickle_loads(b))}
         util.from_bytes(bytes_data, deserializers)
         return self
 
@@ -161,7 +162,7 @@ class Anonymizer(Pipe):
         bytes
             Pickled operators dictionary.
         """
-        serializers = {"operators": lambda: srsly.write_msgpack(self._operators)}
+        serializers = {"operators": lambda: srsly.pickle_dumps(self._operators)}
         return util.to_bytes(serializers)
 
     def from_disk(
@@ -188,7 +189,7 @@ class Anonymizer(Pipe):
         self.clear()
         path = ensure_path(path)
         deserializers = {
-            "operators": lambda p: self._operators.update(srsly.read_msgpack(p))
+            "operators": lambda p: self._operators.update(read_pickle(p))
         }
         util.from_disk(path, deserializers, {})
         return self
@@ -207,5 +208,5 @@ class Anonymizer(Pipe):
             Ignored; kept for compatibility with spaCy's serialisation protocol.
         """
         path = ensure_path(path)
-        serializers = {"operators": lambda p: srsly.write_msgpack(p, self._operators)}
+        serializers = {"operators": lambda p: write_pickle(p, self._operators)}
         util.to_disk(path, serializers, {})

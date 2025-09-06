@@ -4,6 +4,7 @@ from spacy.pipeline import Pipe
 from spacy.matcher import Matcher, PhraseMatcher
 from spacy.matcher.levenshtein import levenshtein_compare
 from anonymacy import span_filter
+from anonymacy.util import read_pickle, write_pickle
 from spacy import util
 from spacy.errors import Errors
 import srsly
@@ -11,7 +12,6 @@ from spacy import util
 from spacy.util import SimpleFrozenList, ensure_path
 from pathlib import Path
 from spacy import registry
-import pickle
 
 from typing import (
     Any,
@@ -343,8 +343,8 @@ class Recognizer(Pipe):
         self.clear()
         deserializers = {
             "patterns": lambda b: self.add_patterns(srsly.json_loads(b)),
-            "custom_matchers": lambda b: self.add_custom_matchers(srsly.read_msgpack(b)),
-            "validators": lambda b: self.add_validators(srsly.read_msgpack(b)),
+            "custom_matchers": lambda b: self.add_custom_matchers(srsly.pickle_loads(b)),
+            "validators": lambda b: self.add_validators(srsly.pickle_loads(b)),
         }
         util.from_bytes(bytes_data, deserializers)
         return self
@@ -356,8 +356,8 @@ class Recognizer(Pipe):
         """
         serializers = {
             "patterns": lambda: srsly.json_dumps(self.patterns),
-            "custom_matchers": lambda: srsly.write_msgpack(self._custom_matchers),
-            "validators": lambda: srsly.write_msgpack(self._validators),
+            "custom_matchers": lambda: srsly.pickle_dumps(self._custom_matchers),
+            "validators": lambda: srsly.pickle_dumps(self._validators),
         }
         return util.to_bytes(serializers)
 
@@ -374,8 +374,8 @@ class Recognizer(Pipe):
 
         deserializers = {
             "patterns": lambda p: self.add_patterns(srsly.read_jsonl(p)),
-            "custom_matchers": lambda p: self.add_custom_matchers(srsly.read_msgpack(p)),
-            "validators": lambda p: self.add_validators(srsly.read_msgpack(p)),
+            "custom_matchers": lambda p: self.add_custom_matchers(read_pickle(p)),
+            "validators": lambda p: self.add_validators(read_pickle(p)),
         }
         util.from_disk(path, deserializers, {})
         return self
@@ -389,14 +389,9 @@ class Recognizer(Pipe):
         """
         path = ensure_path(path)
 
-        
-        def _write_pickle(p: Path) -> None:
-            with open(p, "wb") as f:
-                pickle.dump(self._operators, f)
-
         serializers = {
             "patterns": lambda p: srsly.write_jsonl(p, self.patterns),
-            "custom_matchers": lambda p: srsly.write_msgpack(p, self._custom_matchers),
-            "validators": lambda p: srsly.write_msgpack(p, self._validators),
+            "custom_matchers": lambda p: write_pickle(p, self._custom_matchers),
+            "validators": lambda p: write_pickle(p, self._validators),
         }
         util.to_disk(path, serializers, {})

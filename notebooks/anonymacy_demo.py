@@ -222,14 +222,7 @@ def _(
     )
 
     mo.iframe(html, height=400)
-    return doc, text
-
-
-@app.cell
-def _(loaded, text):
-    result = loaded(text)
-    print(result._.anonymized)
-    return
+    return (doc,)
 
 
 @app.cell
