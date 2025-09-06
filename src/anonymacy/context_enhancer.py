@@ -51,8 +51,6 @@ class ContextEnhancer(Pipe):
             allow_dependency_link: If True, allows dependency-based context matching
             style: "ent" or "span" for where to store results
             spans_key: Key for doc.spans if style="span"
-            ignore_recognizer_context: If True, ignores context patterns from recognizers
-            ignore_sources: List of sources to ignore when enhancing spans
         """
         self.nlp = nlp
         self.name = name
