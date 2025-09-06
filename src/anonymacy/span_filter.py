@@ -7,6 +7,10 @@ from typing import (
     Iterable
 )
 
+@registry.misc("anonymacy.highest_confidence_filter.v1")
+def make_highest_confidence_filter():
+    return highest_confidence_filter
+
 def highest_confidence_filter(*spans: Iterable["Span"]) -> List[Span]:
     """Filter overlapping spans by selecting the one with the highest confidence score.
     
@@ -41,7 +45,3 @@ def highest_confidence_filter(*spans: Iterable["Span"]) -> List[Span]:
             seen_tokens.update(range(span.start, span.end))
             
     return sorted(result, key=lambda s: s.start)
-
-@registry.misc("anonymacy.highest_confidence_filter.v1")
-def make_highest_confidence_filter():
-    return highest_confidence_filter

@@ -198,7 +198,7 @@ class Recognizer(Pipe):
 
             doc.ents = sorted(spans)
 
-    def add_patterns(self, patterns: List[Dict[str, Any]]) -> None:
+    def add_patterns(self, patterns: List[PatternType]) -> None:
         """Add patterns to the matcher."""
 
         phrase_pattern_ids = []

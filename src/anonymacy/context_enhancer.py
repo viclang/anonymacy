@@ -16,8 +16,6 @@ from typing import (
     NotRequired,
 )
 
-logger = logging.getLogger("context-enhancer")
-
 class ContextPatternType(TypedDict):
     label: Required[str]
     context: Required[Union[str, List[Dict[str, Any]]]]
@@ -103,22 +101,18 @@ class ContextEnhancer(Pipe):
         matcher = Matcher(self.nlp.vocab)
         pattern_map = {}  # Maps pattern_id to pattern config
         
-        for idx, pattern_config in enumerate(all_patterns):
-            try:
-                label = pattern_config["label"]
-                pattern_list = pattern_config["pattern"]
-                invalidate = pattern_config.get("invalidate", False)
-                
-                pattern_id = f"{label}_{idx}"
-                matcher.add(pattern_id, [pattern_list])
-                pattern_map[pattern_id] = {
-                    "label": label,
-                    "pattern": pattern_list,
-                    "invalidate": invalidate
-                }
-            except KeyError as e:
-                logger.warning(f"Skipping invalid pattern {pattern_config}: missing {e}")
-                continue
+        for idx, pattern_config in enumerate(all_patterns):            
+            label = pattern_config["label"]
+            pattern_list = pattern_config["pattern"]
+            invalidate = pattern_config.get("invalidate", False)
+            
+            pattern_id = f"{label}_{idx}"
+            matcher.add(pattern_id, [pattern_list])
+            pattern_map[pattern_id] = {
+                "label": label,
+                "pattern": pattern_list,
+                "invalidate": invalidate
+            }
         
         # Create extended doc if needed
         if self.added_context_words:
@@ -235,7 +229,6 @@ class ContextEnhancer(Pipe):
     
     def _create_enhanced_span(self, span: Span, context: List[str]) -> Span:
         """Create enhanced version of span."""
-        logger.debug(f"Enhancing span: {span.text} [{span.label_}] with contexts: {context}")
         enhanced = Span(span.doc, span.start, span.end, label=span.label_)
         
         # Calculate new score

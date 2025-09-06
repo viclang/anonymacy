@@ -10,7 +10,6 @@ import pickle
 NoArgOperator = Callable[[], str]
 TextOperator = Callable[[str], str]
 
-
 @Language.factory("anonymizer")
 class Anonymizer(Pipe):
 

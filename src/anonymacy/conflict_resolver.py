@@ -1,11 +1,9 @@
-from typing import List, Optional
+from typing import Optional
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
 from anonymacy import span_filter
 from typing import (
-    Set,
-    List,
     Optional,
     Callable,
     Iterable
