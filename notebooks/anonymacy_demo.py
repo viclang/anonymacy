@@ -233,6 +233,12 @@ def _(doc):
 
 @app.cell
 def _(doc):
+    doc._.anonymized.ents
+    return
+
+
+@app.cell
+def _(doc):
     if "sc" in doc.spans:
         spans = doc.spans["sc"]
     else:
@@ -241,8 +247,8 @@ def _(doc):
     # Print span text, label, and score
     for span in spans:
         print(f"Text: {span.text}, Label: {span.label_}, Score: {span._.score:.2f}")
-        if span._.supportive_context:
-            print(f"Context Found: {span._.supportive_context}")
+        if span._.context:
+            print(f"Context Found: {span._.context}")
     return
 
 
