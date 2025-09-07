@@ -45,7 +45,7 @@ RECOGNIZER_DEFAULT_SPANS_KEY = "sc"
 
 # Compatibility function for registry
 def anonymacy_levenshtein_compare(s1: str, s2: str, max_dist: int) -> bool:
-    return anonymacy_levenshtein_compare(s1, s2, max_dist)
+    return levenshtein_compare(s1, s2, max_dist)
 
 @registry.misc("spacy.levenshtein_compare.v1")
 def make_levenshtein_compare(levenshtein_compare=levenshtein_compare):
