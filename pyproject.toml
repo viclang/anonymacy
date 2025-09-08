@@ -1,6 +1,6 @@
 [project]
 name = "anonymacy"
-version = "0.0.3"
+version = "0.0.4"
 description = "anonymaCy is a spaCy extension for anonymizing PII using rule-based recognizers, context-aware processing, conflict resolution and customizable anonymization."
 readme = "README.md"
 authors = [
