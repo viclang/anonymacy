@@ -1,15 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "anonymacy"
-version = "0.0.4"
-description = "anonymaCy is a spaCy extension for anonymizing PII using rule-based recognizers, context-aware processing, conflict resolution and customizable anonymization."
-readme = "README.md"
-authors = [
-    { name = "viclang", email = "viclang.github@pm.me" }
-]
+version = "0.0.5"
 requires-python = ">=3.9,<3.14"
-dependencies = [
-    "spacy>=3.8.7",
-]
+dependencies = ["spacy>=3.8.7"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/anonymacy"]
+
+[project.entry-points.spacy_factories]
+recognizer = "anonymacy.recognizer:Recognizer"
+context_enhancer = "anonymacy.context_enhancer:ContextEnhancer"
+conflict_resolver = "anonymacy.conflict_resolver:ConflictResolver"
+anonymizer = "anonymacy.anonymizer:Anonymizer"
 
 [dependency-groups]
 dev = [
@@ -17,12 +23,5 @@ dev = [
     "pytest",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [tool.hatch.metadata]
 allow-direct-references = true
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/anonymacy"]
