@@ -18,7 +18,7 @@ from typing import (
 
 logger = logging.getLogger("context-enhancer")
 
-class ContextPatternType(TypedDict):
+class ContextPattern(TypedDict):
     label: Required[str]
     context: Required[Union[str, List[Dict[str, Any]]]]
     invalidate: NotRequired[bool]
@@ -31,7 +31,7 @@ class ContextEnhancer(Pipe):
         self,
         nlp: Language,
         name: str = "context_enhancer",
-        patterns: List[ContextPatternType] = None,
+        patterns: List[ContextPattern] = None,
         added_context_words: Optional[List[str]] = None,
         confidence_boost: float = 0.35,
         min_enhanced_score: float = 0.4,
