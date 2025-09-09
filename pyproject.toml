@@ -1,12 +1,12 @@
 [project]
 name = "anonymacy"
-version = "0.0.3"
+version = "0.0.4"
 description = "anonymaCy is a spaCy extension for anonymizing PII using rule-based recognizers, context-aware processing, conflict resolution and customizable anonymization."
 readme = "README.md"
 authors = [
     { name = "viclang", email = "viclang.github@pm.me" }
 ]
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.9,<3.14"
 dependencies = [
     "spacy>=3.8.7",
     "phonenumbers>=9.0.8",
