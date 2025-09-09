@@ -12,7 +12,6 @@ from typing import (
     Tuple,
     Union,
     TypedDict,
-    ReadOnly,
     Required,
     NotRequired,
 )
@@ -20,9 +19,9 @@ from typing import (
 logger = logging.getLogger("context-enhancer")
 
 class ContextPatternType(TypedDict):
-    label: ReadOnly[Required[str]]
-    context: ReadOnly[Required[Union[str, List[Dict[str, Any]]]]]
-    invalidate: ReadOnly[NotRequired[bool]]
+    label: Required[str]
+    context: Required[Union[str, List[Dict[str, Any]]]]
+    invalidate: NotRequired[bool]
 
 @Language.factory("context_enhancer")
 class ContextEnhancer(Pipe):
