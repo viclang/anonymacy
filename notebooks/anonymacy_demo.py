@@ -18,7 +18,7 @@
 
 import marimo
 
-__generated_with = "0.15.2"
+__generated_with = "0.15.3"
 app = marimo.App(width="medium")
 
 
@@ -28,7 +28,6 @@ def _():
     from spacy import displacy, Language
     from spacy.tokens import Doc, Span
     import spacy
-    from anonymacy import ContextEnhancer, Recognizer, conflict_resolver
     from anonymacy import validator
     from faker import Faker
     return Faker, displacy, mo, spacy, validator
