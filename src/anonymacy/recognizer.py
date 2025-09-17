@@ -196,7 +196,7 @@ class Recognizer(Pipe):
     def add_patterns(self, patterns: List[PatternType]) -> None:
         """Add patterns to the matcher."""
 
-        phrase_pattern_ids = []
+        phrase_pattern_labels = []
         phrase_pattern_texts = []
 
         for entry in patterns:
@@ -204,10 +204,9 @@ class Recognizer(Pipe):
             p_id = entry.get("id", "")
             p_score = entry.get("score", self.default_score)
             
-            pattern_id = f"{p_label}_{len(self._patterns)}"
-            
-            pattern_string_id = self.nlp.vocab.strings.add(pattern_id)
-            self._match_label_id_map[pattern_string_id] = {
+            label = f"{p_label}_{len(self._patterns)}"
+
+            self._match_label_id_map[self.nlp.vocab.strings.as_int(label)] = {
                 "label": p_label,
                 "id": p_id,
                 "score": p_score
@@ -215,11 +214,11 @@ class Recognizer(Pipe):
             
             if isinstance(entry["pattern"], str):
                 # Phrase pattern - store for later processing
-                phrase_pattern_ids.append(pattern_id)
+                phrase_pattern_labels.append(label)
                 phrase_pattern_texts.append(entry["pattern"])
             elif isinstance(entry["pattern"], list):
                 # Token pattern - add directly
-                self.matcher.add(pattern_id, [entry["pattern"]])
+                self.matcher.add(label, [entry["pattern"]])
             else:
                 raise ValueError(f"Pattern must be string or list of dicts, got {type(entry['pattern'])}")
             
@@ -237,17 +236,12 @@ class Recognizer(Pipe):
         except ValueError:
             subsequent_pipes = []
 
-        docs = list(self.nlp.pipe(phrase_pattern_texts))
         with self.nlp.select_pipes(disable=subsequent_pipes):
-            # Process phrase patterns through the pipeline to tokenize them
-            for pattern_id, pattern_doc in zip(phrase_pattern_ids, docs):
-                # Add the tokenized pattern to phrase_matcher
-                label_id = self.nlp.vocab.strings.add(pattern_id)
-                self.phrase_matcher.add(label_id, [pattern_doc])
-                # Update the label mapping with the actual ID used by PhraseMatcher
-                self._match_label_id_map[label_id] = self._match_label_id_map.pop(
-                    self.nlp.vocab.strings.add(pattern_id)
-                )
+            for label, pattern in zip(
+                phrase_pattern_labels,
+                self.nlp.pipe(phrase_pattern_texts)
+            ):
+                self.phrase_matcher.add(label, [pattern])
 
     def add_custom_matchers(self, matchers: Dict[str, Callable[[Doc], List[Span]]]) -> None:
         """Add custom matchers to the recognizer.
