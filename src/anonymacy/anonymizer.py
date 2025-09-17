@@ -1,3 +1,4 @@
+import inspect
 from typing import Callable, Dict, List, Union, Iterable
 from spacy.language import Language
 from spacy.tokens import Doc, Span
@@ -75,22 +76,28 @@ class Anonymizer(Pipe):
 
     def _apply_operator(self, label: str, text: str) -> str:
         operator = self._operators.get(label)
-        if not operator:
+        if operator is None:
             return f"[{label.upper()}]"
 
         if isinstance(operator, str):
             return operator
 
-        try:
-            argcount = operator.__code__.co_argcount
-            if hasattr(operator, "__self__"):
-                argcount -= 1
-        except AttributeError:
-            argcount = 1
+        sig = inspect.signature(operator)
+        params = tuple(sig.parameters.values())
 
-        if argcount == 0:
+        if params and params[0].name == "self":
+            params = params[1:]
+
+        if not params: 
             return operator()
-        return operator(text)
+
+        if len(params) == 1:
+            return operator(text)
+
+        raise TypeError(
+            f"Operator for label {label!r} must be a str or a callable "
+            "taking zero or one positional argument"
+        )
 
     def _make_anonymized_doc(self, original_doc: Doc) -> Doc:
         sensitive_spans = sorted(self._get_spans(original_doc), key=lambda span: span.start)
@@ -123,22 +130,21 @@ class Anonymizer(Pipe):
             # hit a sensitive span → replace it
             current_span = sensitive_spans[span_index]
             replacement_tokens = self._apply_operator(current_span.label_, current_span.text)
-            if isinstance(replacement_tokens, str):
-                replacement_tokens = [replacement_tokens]
-
+            
             start_position = len(new_tokens)
-            new_tokens.extend(replacement_tokens)
+            replacement_doc = self.nlp.tokenizer(replacement_tokens)
+            for new_token in replacement_doc:
+                new_tokens.append(new_token.text)
+                new_spaces.append(bool(new_token.whitespace_))
 
-            # only the last replacement token inherits the original space flag
-            last_has_space: bool = bool(current_span[-1].whitespace_)
-            new_spaces.extend([False] * (len(replacement_tokens) - 1) + [last_has_space])
+            if new_spaces:
+                new_spaces[-1] = bool(current_span[-1].whitespace_)
 
             span_info.append(
                 (
                     start_position,
-                    start_position + len(replacement_tokens),
-                    current_span.label_,
-                    current_span.text
+                    start_position + len(replacement_doc),
+                    current_span.label_
                 )
             )
             token_index = current_span.end
@@ -146,16 +152,14 @@ class Anonymizer(Pipe):
 
         # build the new document and create spans
         anonymized_document = Doc(original_doc.vocab, words=new_tokens, spaces=new_spaces)
-
         new_spans: list[Span] = []
-        for start, end, label, original_text in span_info:
+        for start, end, label in span_info:
             new_span = anonymized_document[start:end]
             new_span.label_ = label
-            new_span._.original_text = original_text
             new_spans.append(new_span)
 
         if self.style == "ent":
-            anonymized_document.ents = list(anonymized_document.ents) + new_spans
+            anonymized_document.ents = new_spans
         else:
             key = self.spans_key
             if key not in anonymized_document.spans:
@@ -187,7 +191,7 @@ class Anonymizer(Pipe):
         """
         self.clear()
         deserializers = {"operators": lambda b: self._operators.update(srsly.pickle_loads(b))}
-        util.from_bytes(bytes_data, deserializers, {})
+        util.from_bytes(bytes_data, deserializers, exclude)
         return self
 
     def to_bytes(
