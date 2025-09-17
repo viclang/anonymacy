@@ -102,20 +102,22 @@ class Anonymizer(Pipe):
                 words=[token.text for token in original_doc],
                 spaces=[bool(token.whitespace_) for token in original_doc],
             )
-
+        
         new_tokens: list[str] = []
         new_spaces: list[bool] = []
+
         span_index: int = 0
-        output_position: int = 0
+        token_index: int = 0
+        doc_length: int = len(original_doc)
 
         span_info: list[tuple[int, int, str, str]] = []
-
-        for original_index, original_token in enumerate(original_doc):
+        while token_index < doc_length:
             # outside any sensitive span → copy token
-            if span_index >= len(sensitive_spans) or original_index < sensitive_spans[span_index].start:
-                new_tokens.append(original_token.text)
-                new_spaces.append(bool(original_token.whitespace_))
-                output_position += 1
+            if span_index >= len(sensitive_spans) or token_index < sensitive_spans[span_index].start:
+                token = original_doc[token_index]
+                new_tokens.append(token.text)
+                new_spaces.append(bool(token.whitespace_))
+                token_index += 1
                 continue
 
             # hit a sensitive span → replace it
@@ -124,17 +126,22 @@ class Anonymizer(Pipe):
             if isinstance(replacement_tokens, str):
                 replacement_tokens = [replacement_tokens]
 
-            start_position = output_position
+            start_position = len(new_tokens)
             new_tokens.extend(replacement_tokens)
 
             # only the last replacement token inherits the original space flag
             last_has_space: bool = bool(current_span[-1].whitespace_)
             new_spaces.extend([False] * (len(replacement_tokens) - 1) + [last_has_space])
-            output_position += len(replacement_tokens)
 
             span_info.append(
-                (start_position, output_position, current_span.label_, current_span.text)
+                (
+                    start_position,
+                    start_position + len(replacement_tokens),
+                    current_span.label_,
+                    current_span.text
+                )
             )
+            token_index = current_span.end
             span_index += 1
 
         # build the new document and create spans
@@ -180,7 +187,7 @@ class Anonymizer(Pipe):
         """
         self.clear()
         deserializers = {"operators": lambda b: self._operators.update(srsly.pickle_loads(b))}
-        util.from_bytes(bytes_data, deserializers)
+        util.from_bytes(bytes_data, deserializers, {})
         return self
 
     def to_bytes(
@@ -200,7 +207,7 @@ class Anonymizer(Pipe):
             Pickled operators dictionary.
         """
         serializers = {"operators": lambda: srsly.pickle_dumps(self._operators)}
-        return util.to_bytes(serializers)
+        return util.to_bytes(serializers, exclude)
 
     def from_disk(
         self,
@@ -228,7 +235,7 @@ class Anonymizer(Pipe):
         deserializers = {
             "operators": lambda p: self._operators.update(read_pickle(p))
         }
-        util.from_disk(path, deserializers, {})
+        util.from_disk(path, deserializers, exclude)
         return self
 
     def to_disk(
@@ -246,4 +253,4 @@ class Anonymizer(Pipe):
         """
         path = ensure_path(path)
         serializers = {"operators": lambda p: write_pickle(p, self._operators)}
-        util.to_disk(path, serializers, {})
+        util.to_disk(path, serializers, exclude)

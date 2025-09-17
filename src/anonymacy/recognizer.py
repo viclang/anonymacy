@@ -339,7 +339,7 @@ class Recognizer(Pipe):
             "custom_matchers": lambda b: self.add_custom_matchers(srsly.pickle_loads(b)),
             "validators": lambda b: self.add_validators(srsly.pickle_loads(b)),
         }
-        util.from_bytes(bytes_data, deserializers)
+        util.from_bytes(bytes_data, deserializers, exclude)
         return self
 
     def to_bytes(self, *, exclude: Iterable[str] = SimpleFrozenList()) -> bytes:
@@ -352,7 +352,7 @@ class Recognizer(Pipe):
             "custom_matchers": lambda: srsly.pickle_dumps(self._custom_matchers),
             "validators": lambda: srsly.pickle_dumps(self._validators),
         }
-        return util.to_bytes(serializers)
+        return util.to_bytes(serializers, exclude)
 
     def from_disk(
         self, path: Union[str, Path], *, exclude: Iterable[str] = SimpleFrozenList()
@@ -370,7 +370,7 @@ class Recognizer(Pipe):
             "custom_matchers": lambda p: self.add_custom_matchers(read_pickle(p)),
             "validators": lambda p: self.add_validators(read_pickle(p)),
         }
-        util.from_disk(path, deserializers, {})
+        util.from_disk(path, deserializers, exclude)
         return self
 
     def to_disk(
@@ -387,4 +387,4 @@ class Recognizer(Pipe):
             "custom_matchers": lambda p: write_pickle(p, self._custom_matchers),
             "validators": lambda p: write_pickle(p, self._validators),
         }
-        util.to_disk(path, serializers, {})
+        util.to_disk(path, serializers, exclude)
