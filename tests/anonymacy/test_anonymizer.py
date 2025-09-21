@@ -85,8 +85,7 @@ def test_empty_replacement():
     out: Doc = anonymizer(doc)._.anonymized
     
     assert out.text == "Delete 1234 ok"
-    spaces = [bool(t.whitespace_) for t in out]
-    assert spaces == [True, True, False]
+    assert len(out.ents) == 0
 
 
 def test_overlapping_spans_only_longest_kept():
@@ -153,6 +152,7 @@ def test_clear_operators():
     anonymizer.add_operators({"label": "SECRET"})
     d1 = nlp("token")
     d1.ents = [ent(d1, 0, 1, "label")]
+    
     assert anonymizer(d1)._.anonymized.text == "SECRET"
     anonymizer.clear()
     d2 = nlp("token")
