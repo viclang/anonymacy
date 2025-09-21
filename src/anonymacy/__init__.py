@@ -12,9 +12,6 @@ if not Span.has_extension("score"):
 if not Span.has_extension("context"):
     Span.set_extension("context", default=[])
 
-if not Span.has_extension("original_text"):
-    Span.set_extension("original_text", default=None)
-
 if not Doc.has_extension("anonymized"):
     Doc.set_extension("anonymized", default=None)
 

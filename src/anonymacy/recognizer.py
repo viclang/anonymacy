@@ -48,8 +48,8 @@ def anonymacy_levenshtein_compare(s1: str, s2: str, max_dist: int) -> bool:
     return levenshtein_compare(s1, s2, max_dist)
 
 @registry.misc("spacy.levenshtein_compare.v1")
-def make_levenshtein_compare(levenshtein_compare=levenshtein_compare):
-    return levenshtein_compare
+def make_levenshtein_compare():
+    return anonymacy_levenshtein_compare
 
 DEFAULT_RECOGNIZER_CONFIG = {
     "spans_key": RECOGNIZER_DEFAULT_SPANS_KEY,
@@ -75,7 +75,7 @@ class Recognizer(Pipe):
         annotate_ents: bool = False,
         ents_filter: SpansFilterFunc = span_filter.highest_confidence_filter,
         phrase_matcher_attr: Optional[Union[int, str]] = None,
-        matcher_fuzzy_compare: Callable[[str, str, int], bool] = anonymacy_levenshtein_compare,
+        matcher_fuzzy_compare: Callable = anonymacy_levenshtein_compare,
         default_score: float = 0.6,
         validate_patterns: bool = False,
         overwrite: bool = False,
@@ -127,7 +127,7 @@ class Recognizer(Pipe):
 
     def match(self, doc: Doc) -> List[Span]:
         """Find all matches in the document."""
-        spans = []
+        spans: dict[tuple[int, int], Span] = {}
         
         # Get matches from the main pattern matcher
         matches = cast(
@@ -143,34 +143,47 @@ class Recognizer(Pipe):
             label = pattern_info["label"]
             score = min(pattern_info.get("score", self.default_score), 1.0)
             
+            key = (start, end)
+            if key in spans and spans[key]._.score >= score:
+                continue
+            
             span = doc[start:end]
             span.label_ = label
+            span_id = pattern_info.get("id", "")
+            if isinstance(span_id, str):
+                span_id = doc.vocab.strings.add(span_id)
+            span.id = span_id
             span._.score = score
             if self._validators and not self._is_valid(span):
                 continue
 
-            spans.append(span)
+            spans[key] = span
 
         if self._custom_matchers:
             for label, custom_matcher in self._custom_matchers.items():
                 custom_matches = custom_matcher(doc)
                 
-                for span in custom_matches:
-                    if not span.label_:
-                        span.label_ = label
+                for start, end, score in custom_matches:
+                    key = (start, end)
+                    
+                    score = min(score, 1.0)
+                    if score <= 0.0:
+                        score = self.default_score
+                    
+                    if key in spans and spans[key]._.score >= score:
+                        continue
 
-                    if getattr(span._, "score", 0.0) == 0.0:
-                        span._.score = self.default_score
-                    else:
-                        span._.score = min(span._.score, 1.0)
+                    span = doc[start:end]
+                    span.label_ = label
+                    span._.score = score
 
                     if self._validators and not self._is_valid(span):
                         logger.debug("dropped span %r label=%s validator=False", span.text, span.label_)
                         continue
+                
+                    spans[key] = span
 
-                    spans.append(span)
-
-        return sorted(spans, key=lambda s: (s.start, s.end))
+        return sorted(spans.values(), key=lambda s: (s.start, s.end))
 
     def set_annotations(self, doc, matches):
         """Modify the document in place"""
@@ -243,11 +256,11 @@ class Recognizer(Pipe):
             ):
                 self.phrase_matcher.add(label, [pattern])
 
-    def add_custom_matchers(self, matchers: Dict[str, Callable[[Doc], List[Span]]]) -> None:
+    def add_custom_matchers(self, matchers: Dict[str, Callable[[Doc], List[Tuple[int, int, int]]]]) -> None:
         """Add custom matchers to the recognizer.
 
         Args:
-            matchers (Dict[str, Callable[[Doc], List[Span]]]): A dictionary of custom matchers.
+            matchers (Dict[str, Callable[[Doc], List[Tuple[int, int, int]]]]): A dictionary of custom matchers.
         """
         self._custom_matchers.update(matchers)
 
