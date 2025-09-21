@@ -3,6 +3,7 @@
 # dependencies = [
 #     "anonymacy",
 #     "marimo",
+#     "uvicorn==0.35.0", #https://github.com/marimo-team/marimo/issues/6453
 #     "gliner-spacy",
 #     "gliner[tokenizers]",
 #     "hf_xet",
