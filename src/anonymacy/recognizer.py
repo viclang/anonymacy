@@ -256,11 +256,11 @@ class Recognizer(Pipe):
             ):
                 self.phrase_matcher.add(label, [pattern])
 
-    def add_custom_matchers(self, matchers: Dict[str, Callable[[Doc], List[Tuple[int, int, int]]]]) -> None:
+    def add_custom_matchers(self, matchers: Dict[str, Callable[[Doc], List[Tuple[int, int, float]]]]) -> None:
         """Add custom matchers to the recognizer.
 
         Args:
-            matchers (Dict[str, Callable[[Doc], List[Tuple[int, int, int]]]]): A dictionary of custom matchers.
+            matchers (Dict[str, Callable[[Doc], List[Tuple[int, int, float]]]]): A dictionary of custom matchers.
         """
         self._custom_matchers.update(matchers)
 

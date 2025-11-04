@@ -31,12 +31,11 @@ class ContextEnhancer(Pipe):
         name: str = "context_enhancer",
         spans_key: str = "sc",
         style: str = "span",
-        patterns: List[ContextPatternType] = None,
         added_context_words: Optional[List[str]] = None,
         confidence_boost: float = 0.35,
         min_enhanced_score: float = 0.4,
-        context_window: Tuple[int, int] = (5, 2),
-        allow_dependency_link: bool = True
+        context_window: Tuple[int, int] = (5, 1),
+        allow_dependency_link: bool = True,
     ):
         """Initialize ContextEnhancer.
         
@@ -63,7 +62,7 @@ class ContextEnhancer(Pipe):
         self.spans_key = spans_key
 
         # Store our own patterns
-        self._patterns = patterns if patterns else []
+        self._patterns = []
 
     def __call__(self, doc: Doc) -> Doc:
         """Process document."""
@@ -108,7 +107,7 @@ class ContextEnhancer(Pipe):
                 continue
          
             should_invalidate = False
-            context = []
+            context = set()
             
             # Check all matches for this span
             for match_id, start, end in matches:
@@ -125,7 +124,7 @@ class ContextEnhancer(Pipe):
                         break  # No need to continue if invalidating
                     else:
                         context_text = extended_doc[start:end].text
-                        context.append(context_text)
+                        context.add(context_text)
             
             # Apply results
             if should_invalidate:
@@ -143,8 +142,7 @@ class ContextEnhancer(Pipe):
 
     def add_patterns(self, patterns: List[ContextPatternType]) -> None:
         """Add patterns to the context enhancer."""
-        for pattern in patterns:
-            self._patterns.append(pattern)
+        self._patterns.extend(patterns)
 
     def _get_spans(self, doc: Doc) -> List[Span]:
         """Get current spans."""
