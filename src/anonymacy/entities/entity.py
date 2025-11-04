@@ -24,8 +24,7 @@ class Entity:
 
     def _normalize_patterns(self, patterns: List[Dict]) -> List[Dict]:
         for pattern in patterns:
-            if "label" not in pattern:
-                pattern["label"] = self.label
+            pattern["label"] = self.label
         return patterns
 
     def replace(self, **changes: Any) -> "Entity":
