@@ -6,7 +6,11 @@ build-backend = "hatchling.build"
 name = "anonymacy"
 version = "0.0.7"
 requires-python = ">=3.9,<3.14"
-dependencies = ["spacy>=3.8.7"]
+dependencies = [
+    "spacy>=3.8.7",
+    "phonenumbers",
+    "schwifty"
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/anonymacy"]
