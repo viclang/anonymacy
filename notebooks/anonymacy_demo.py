@@ -35,12 +35,6 @@ def _():
     return Faker, PipelineBuilder, displacy, mo, nl, spacy
 
 
-@app.cell
-def _(nl):
-    nl.BSN
-    return
-
-
 @app.cell(hide_code=True)
 def _(mo):
     text_area = mo.ui.text_area(
@@ -79,14 +73,10 @@ def _(Faker, PipelineBuilder, displacy, mo, nl, spacy, text_area):
 
     builder = PipelineBuilder(nlp)
     fake = Faker("nl_NL")
-    print()
     builder.add_entities([
         nl.BSN.replace(replacer=fake.ssn),
         nl.PHONE_NUMBER.replace(replacer=fake.phone_number)
     ])
-    recognizer = nlp.get_pipe('recognizer')
-    print(recognizer.labels)
-    #builder.add_phone_number()
 
     text = text_area.value
     doc = nlp(text)
