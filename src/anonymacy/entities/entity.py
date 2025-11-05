@@ -21,6 +21,8 @@ class Entity:
             self._normalize_patterns(self.patterns)
         if self.context_patterns:
             self._normalize_patterns(self.context_patterns)
+        if not self.replacer:
+            self.replacer = f"[{self.label.upper()}]" 
 
     def _normalize_patterns(self, patterns: List[Dict]) -> List[Dict]:
         for pattern in patterns:
