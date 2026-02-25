@@ -1,7 +1,6 @@
 from .entity import Entity
 from . import nl
 from .datetime import DATETIME
-from .date_of_birth import DATE_OF_BIRTH
 from .email import EMAIL
 from .iban import IBAN
 from .ip_address import IP_ADDRESS
