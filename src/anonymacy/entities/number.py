@@ -4,7 +4,7 @@ NUMBER = Entity(
     label="NUMBER",
     patterns=[
         # Match tokens that look like numbers
-        {"score": 0.9, "pattern": [{"LIKE_NUM": True}]},
+        {"score": 0.5, "pattern": [{"LIKE_NUM": True}]},
     ],
     context_patterns=[
         {"pattern": [{"LEMMA": "number"}]},

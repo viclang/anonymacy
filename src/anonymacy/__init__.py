@@ -3,7 +3,6 @@ from .conflict_resolver import ConflictResolver
 from .anonymizer import Anonymizer
 from .recognizer import Recognizer
 from .pipeline_builder import PipelineBuilder
-from . import validator
 from . import span_filter
 from spacy.tokens import Doc, Span
 
@@ -22,6 +21,5 @@ __all__ = [
     'ContextEnhancer',
     'PipelineBuilder',
     'Recognizer',
-    'validator',
     'span_filter'
 ]

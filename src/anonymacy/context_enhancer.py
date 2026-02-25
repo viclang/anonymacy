@@ -3,14 +3,7 @@ from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.matcher import Matcher
 from spacy.pipeline import Pipe
-import logging
 from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
     TypedDict,
     Required,
     NotRequired,
@@ -78,14 +71,14 @@ class ContextEnhancer(Pipe):
         for idx, pattern_config in enumerate(self._patterns):            
             label = pattern_config["label"]
             pattern_list = pattern_config["pattern"]
-            invalidate = pattern_config.get("invalidate", False)
+            context_label = pattern_config.get("context_label", None)
             
             pattern_id = f"{label}_{idx}"
             matcher.add(pattern_id, [pattern_list])
             pattern_map[pattern_id] = {
                 "label": label,
                 "pattern": pattern_list,
-                "invalidate": invalidate
+                "context_label": context_label
             }
         
         # Create extended doc if needed
@@ -106,7 +99,7 @@ class ContextEnhancer(Pipe):
                 processed_spans.append(span)
                 continue
          
-            should_invalidate = False
+            context_label = None
             context = set()
             
             # Check all matches for this span
@@ -119,19 +112,14 @@ class ContextEnhancer(Pipe):
                 pattern_config = pattern_map.get(pattern_id)
                 
                 if pattern_config and pattern_config["label"] == span.label_:
-                    if pattern_config["invalidate"]:
-                        should_invalidate = True
-                        break  # No need to continue if invalidating
-                    else:
-                        context_text = extended_doc[start:end].text
-                        context.add(context_text)
+                    if pattern_config["context_label"]:
+                        context_label = pattern_config["context_label"]
+                    context_text = extended_doc[start:end].text
+                    context.add(context_text)
             
             # Apply results
-            if should_invalidate:
-                continue  # Skip invalidated spans
-            
             if context:
-                enhanced_span = self._create_enhanced_span(span, context)
+                enhanced_span = self._create_enhanced_span(span, context, context_label)
                 processed_spans.append(enhanced_span)
             else:
                 processed_spans.append(span)
@@ -193,9 +181,10 @@ class ContextEnhancer(Pipe):
         
         return False
     
-    def _create_enhanced_span(self, span: Span, context: List[str]) -> Span:
+    def _create_enhanced_span(self, span: Span, context: List[str], context_label: Optional[str] = None) -> Span:
         """Create enhanced version of span."""
-        enhanced = Span(span.doc, span.start, span.end, label=span.label_)
+        label = context_label if context_label else span.label_
+        enhanced = Span(span.doc, span.start, span.end, label=label)
         
         # Calculate new score
         original_score = getattr(span._, "score", 1.0)
