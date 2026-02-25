@@ -1,11 +1,11 @@
-from schwifty import IBAN
+from schwifty import IBAN as schwiftyIBAN
 from schwifty.exceptions import InvalidChecksumDigits
 from anonymacy.entities import Entity
 
 def _iban_validator(iban) -> bool:
                 # Returns True if the IBAN is valid, False otherwise
                 try:
-                    iban = IBAN(iban)
+                    iban = schwiftyIBAN(iban)
                     return True
                 except InvalidChecksumDigits:
                     return False
