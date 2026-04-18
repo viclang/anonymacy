@@ -2,13 +2,12 @@ from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
 from spacy.matcher import Matcher, PhraseMatcher
-from spacy.matcher.levenshtein import levenshtein_compare
+from spacy.matcher.levenshtein import levenshtein_compare # type:ignore[import-untyped]
 from anonymacy import span_filter
 from anonymacy.util import read_pickle, write_pickle
 from spacy import util
 from spacy.errors import Errors
 import srsly
-from spacy import util
 from spacy.util import SimpleFrozenList, ensure_path
 from pathlib import Path
 from spacy import registry
@@ -45,8 +44,8 @@ RECOGNIZER_DEFAULT_SPANS_KEY = "sc"
 
 # Compatibility function for registry
 def anonymacy_levenshtein_compare(s1: str, s2: str, max_dist: int) -> bool:
-    return levenshtein_compare(s1, s2, max_dist)
-
+    return  levenshtein_compare(s1, s2, max_dist)
+    
 @registry.misc("spacy.levenshtein_compare.v1")
 def make_levenshtein_compare():
     return anonymacy_levenshtein_compare
@@ -89,11 +88,28 @@ class Recognizer(Pipe):
         self.annotate_ents = annotate_ents
         self.phrase_matcher_attr = phrase_matcher_attr
         self.matcher_fuzzy_compare = matcher_fuzzy_compare
-        self._match_label_id_map: Dict[str, Dict[str, Any]] = {}
+        self._match_label_id_map: Dict[int, Dict[str, Any]] = {}
         self.validate_patterns = validate_patterns
         self.overwrite = overwrite
         self.clear()
-
+    
+    def clear(self) -> None:
+        """Reset all patterns.
+        """
+        self._patterns: List[PatternType] = []
+        self._validators: Dict[str, Callable[[Span], bool]] = {}
+        self._custom_matchers: Dict[str, Callable[[Doc], List[Tuple[int, int, float]]]] = {}
+        self.matcher: Matcher = Matcher(
+            self.nlp.vocab,
+            validate=self.validate_patterns,
+            fuzzy_compare=self.matcher_fuzzy_compare,
+        )
+        self.phrase_matcher: PhraseMatcher = PhraseMatcher(
+            self.nlp.vocab,
+            attr=self.phrase_matcher_attr,
+            validate=self.validate_patterns,
+        )
+        
     def __call__(self, doc: Doc) -> Doc:
         """Process document with automatic deduplication."""
         matches = self.match(doc)
@@ -110,7 +126,7 @@ class Recognizer(Pipe):
         return tuple(sorted(set(labels)))
 
     @property
-    def patterns(self) -> List[Dict[str, Any]]:
+    def patterns(self) -> List[PatternType]:
         """Get all patterns that were added."""
         return self._patterns
 
@@ -130,10 +146,7 @@ class Recognizer(Pipe):
         spans: dict[tuple[int, int], Span] = {}
         
         # Get matches from the main pattern matcher
-        matches = cast(
-            List[Tuple[int, int, int]],
-            list(self.matcher(doc)) + list(self.phrase_matcher(doc)),
-        )
+        matches = list(self.matcher(doc)) + list(self.phrase_matcher(doc))
 
         for match_id, start, end in matches:
             if match_id not in self._match_label_id_map or start == end:
@@ -275,23 +288,6 @@ class Recognizer(Pipe):
     def _is_valid(self, span: Span) -> bool:
         return self._validators.get(span.label_, lambda x: True)(span)
 
-    def clear(self) -> None:
-        """Reset all patterns.
-        """
-        self._patterns: List[PatternType] = []
-        self._validators: Dict[str, Callable[[Span], bool]] = {}
-        self._custom_matchers: Dict[str, Callable[[Doc], List[Span]]] = {}
-        self.matcher: Matcher = Matcher(
-            self.nlp.vocab,
-            validate=self.validate_patterns,
-            fuzzy_compare=self.matcher_fuzzy_compare,
-        )
-        self.phrase_matcher: PhraseMatcher = PhraseMatcher(
-            self.nlp.vocab,
-            attr=self.phrase_matcher_attr,
-            validate=self.validate_patterns,
-        )
-
     def remove(self, label: str) -> None:
         """Remove patterns by their label.
 
@@ -342,11 +338,11 @@ class Recognizer(Pipe):
         """
         self.clear()
         deserializers = {
-            "patterns": lambda b: self.add_patterns(srsly.json_loads(b)),
-            "custom_matchers": lambda b: self.add_custom_matchers(srsly.pickle_loads(b)),
-            "validators": lambda b: self.add_validators(srsly.pickle_loads(b)),
+            "patterns": lambda b: self.add_patterns(cast(List[PatternType], srsly.json_loads(b))),
+            "custom_matchers": lambda b: self.add_custom_matchers(cast(Dict[str, Callable[[Doc], List[Tuple[int, int, float]]]], srsly.pickle_loads(b))),
+            "validators": lambda b: self.add_validators(cast(Dict[str, Callable[[Span], bool]], srsly.pickle_loads(b))),
         }
-        util.from_bytes(bytes_data, deserializers, exclude)
+        util.from_bytes(bytes_data, deserializers, exclude) # ty:ignore[invalid-argument-type]
         return self
 
     def to_bytes(self, *, exclude: Iterable[str] = SimpleFrozenList()) -> bytes:
@@ -359,7 +355,7 @@ class Recognizer(Pipe):
             "custom_matchers": lambda: srsly.pickle_dumps(self._custom_matchers),
             "validators": lambda: srsly.pickle_dumps(self._validators),
         }
-        return util.to_bytes(serializers, exclude)
+        return util.to_bytes(serializers, exclude)  # ty:ignore[invalid-argument-type]
 
     def from_disk(
         self, path: Union[str, Path], *, exclude: Iterable[str] = SimpleFrozenList()
@@ -373,11 +369,11 @@ class Recognizer(Pipe):
         path = ensure_path(path)
 
         deserializers = {
-            "patterns": lambda p: self.add_patterns(srsly.read_jsonl(p)),
-            "custom_matchers": lambda p: self.add_custom_matchers(read_pickle(p)),
-            "validators": lambda p: self.add_validators(read_pickle(p)),
+            "patterns": lambda p: self.add_patterns(srsly.read_jsonl(p)), # ty:ignore[invalid-argument-type]
+            "custom_matchers": lambda p: self.add_custom_matchers(read_pickle(p)), # ty:ignore[invalid-argument-type]
+            "validators": lambda p: self.add_validators(read_pickle(p)), # ty:ignore[invalid-argument-type]
         }
-        util.from_disk(path, deserializers, exclude)
+        util.from_disk(path, deserializers, exclude)  # ty:ignore[invalid-argument-type]
         return self
 
     def to_disk(
@@ -390,8 +386,8 @@ class Recognizer(Pipe):
         path = ensure_path(path)
 
         serializers = {
-            "patterns": lambda p: srsly.write_jsonl(p, self.patterns),
+            "patterns": lambda p: srsly.write_jsonl(p, self.patterns), # ty:ignore[invalid-argument-type]
             "custom_matchers": lambda p: write_pickle(p, self._custom_matchers),
             "validators": lambda p: write_pickle(p, self._validators),
         }
-        util.to_disk(path, serializers, exclude)
+        util.to_disk(path, serializers, exclude)  # ty:ignore[invalid-argument-type]

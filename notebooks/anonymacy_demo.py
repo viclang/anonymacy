@@ -1,8 +1,8 @@
 # /// script
-# requires-python = ">=3.10,<3.14"
+# requires-python = ">=3.11,<3.14"
 # dependencies = [
 #     "anonymacy",
-#     "marimo>=0.19.10",
+#     "marimo>=0.23.1",
 #     "ipython",
 #     "gliner-spacy",
 #     "gliner==0.2.22", # gliner>=0.2.23 breaks gliner-spacy due to load_tokenizer being tied to load_onnx_model
@@ -20,21 +20,19 @@
 
 import marimo
 
-__generated_with = "0.19.11"
+__generated_with = "0.23.1"
 app = marimo.App(width="medium")
 
 
 @app.cell
 def _():
     import marimo as mo
-    from spacy import displacy, Language
-    from spacy.tokens import Doc, Span
+    from spacy import displacy
     import spacy
     from anonymacy import PipelineBuilder
     from anonymacy import entities
     from anonymacy.entities import nl
     from faker import Faker
-    from dataclasses import replace
 
     return Faker, PipelineBuilder, displacy, entities, mo, nl, spacy
 
@@ -49,7 +47,7 @@ def _(mo):
 
 
 @app.cell
-def _(Faker, PipelineBuilder, displacy, entities, mo, nl, spacy, text_area):
+def _(Faker, PipelineBuilder, entities, nl, spacy):
 
     nlp = spacy.load("nl_core_news_sm", disable=["ner"])
 
@@ -79,14 +77,28 @@ def _(Faker, PipelineBuilder, displacy, entities, mo, nl, spacy, text_area):
     fake = Faker("nl_NL")
 
     builder.add_entities([
-        nl.BSN.replace(replacer=fake.ssn),
-        nl.PHONE_NUMBER.replace(replacer=fake.phone_number),
+        nl.BSN.replace(redactor=fake.ssn),
+        nl.PHONE_NUMBER.replace(redactor=fake.phone_number),
         entities.DATETIME,
     ])
+    return (nlp,)
 
+
+@app.cell
+def _(nlp):
+    print(nlp.pipe_names)
+    return
+
+
+@app.cell
+def _(nlp, text_area):
     text = text_area.value
     doc = nlp(text)
+    return (doc,)
 
+
+@app.cell
+def _(displacy, doc, mo):
     html = displacy.render(
         doc,
         style="ent",
@@ -107,8 +119,8 @@ def _(Faker, PipelineBuilder, displacy, entities, mo, nl, spacy, text_area):
         }
     )
 
-    mo.iframe(html, height=400)
-    return (doc,)
+    mo.iframe(html, width="100%")
+    return
 
 
 @app.cell

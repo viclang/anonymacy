@@ -1,5 +1,5 @@
 import inspect
-from typing import Callable, Dict, List, Union, Iterable
+from typing import Callable, Dict, List, Union, Iterable, cast
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
@@ -44,15 +44,15 @@ class Anonymizer(Pipe):
         doc._.anonymized = self._make_anonymized_doc(doc)
         return doc
 
-    def add_replacements(
-        self, replacements: Dict[str, Union[str, NoArgReplacement, TextReplacement]]
+    def add_redactors(
+        self, redactors: Dict[str, Union[str, NoArgReplacement, TextReplacement]]
     ) -> None:
         """
         Register or update replacement rules for entity types.
 
         Parameters
         ----------
-        replacements : dict
+        redactors : dict
             Maps entity labels to either:
             - a fixed string, or
             - a zero-argument callable returning a string, or
@@ -62,22 +62,22 @@ class Anonymizer(Pipe):
             If no replacement is registered for a label, the default replacement
             is ``[LABEL]``.
         """
-        self._replacements.update(replacements)
+        self._redactors.update(redactors)
 
     def remove(self, label: str) -> None:
         """
-        Remove replacement rules for the given entity labels.
+        Remove redactor rules for the given entity labels.
 
         Parameters
         ----------
         label : str
-            Entity label to remove replacements for.
+            Entity label to remove redactors for.
         """
-        self._replacements.pop(label, None)
+        self._redactors.pop(label, None)
 
     def clear(self) -> None:
-        """Remove all registered replacements."""
-        self._replacements: Dict[str, Union[str, NoArgReplacement, TextReplacement]] = {}
+        """Remove all registered redactors."""
+        self._redactors: Dict[str, Union[str, NoArgReplacement, TextReplacement]] = {}
 
     def _get_spans(self, doc: Doc) -> List[Span]:
         if self.style == "ent":
@@ -85,25 +85,27 @@ class Anonymizer(Pipe):
         spans = list(doc.spans.get(self.spans_key, []))
         return highest_confidence_filter(spans)
 
-    def _apply_replacement(self, label: str, text: str) -> str:
-        replacement = self._replacements.get(label)
-        if replacement is None:
+    def _apply_redactor(self, label: str, text: str) -> str:
+        redactor = self._redactors.get(label)
+        if redactor is None:
             return f"[{label.upper()}]"
 
-        if isinstance(replacement, str):
-            return replacement
+        if isinstance(redactor, str):
+            return redactor
 
-        sig = inspect.signature(replacement)
+        sig = inspect.signature(redactor)
         params = tuple(sig.parameters.values())
 
         if params and params[0].name == "self":
             params = params[1:]
 
         if not params:
-            return replacement()
+            no_arg_redactor = cast(NoArgReplacement, redactor)
+            return no_arg_redactor()
 
         if len(params) == 1:
-            return replacement(text)
+            text_redactor = cast(TextReplacement, redactor)
+            return text_redactor(text)
 
         raise TypeError(
             f"Replacement for label {label!r} must be a str or a callable "
@@ -128,7 +130,7 @@ class Anonymizer(Pipe):
         token_index: int = 0
         doc_length: int = len(original_doc)
 
-        span_info: list[tuple[int, int, str, str]] = []
+        span_info: list[tuple[int, int, str]] = []
         while token_index < doc_length:
             # outside any sensitive span → copy token
             if span_index >= len(sensitive_spans) or token_index < sensitive_spans[span_index].start:
@@ -140,7 +142,7 @@ class Anonymizer(Pipe):
 
             # hit a sensitive span → replace it
             current_span = sensitive_spans[span_index]
-            replacement_tokens = self._apply_replacement(current_span.label_, current_span.text)
+            replacement_tokens = self._apply_redactor(current_span.label_, current_span.text)
             
             start_position = len(new_tokens)
             replacement_doc = self.nlp.tokenizer(replacement_tokens)
@@ -186,30 +188,30 @@ class Anonymizer(Pipe):
         exclude: Iterable[str] = SimpleFrozenList(),
     ) -> "Anonymizer":
         """
-        Load replacements from a byte blob.
+        Load redactors from a byte blob.
 
         Parameters
         ----------
         bytes_data : bytes
-            Serialised replacements.
+            Serialised redactors.
         exclude : iterable, optional
             Ignored; kept for compatibility with spaCy's serialisation protocol.
 
         Returns
         -------
         Anonymizer
-            self, with replacements restored.
+            self, with redactors restored.
         """
         self.clear()
-        deserializers = {"replacements": lambda b: self._replacements.update(srsly.pickle_loads(b))}
-        util.from_bytes(bytes_data, deserializers, exclude)
+        deserializers = {"redactors": lambda b: self._redactors.update(srsly.pickle_loads(b))}  # type:ignore[arg-type]
+        util.from_bytes(bytes_data, deserializers, exclude)  # type:ignore[arg-type]
         return self
 
     def to_bytes(
         self, *, exclude: Iterable[str] = SimpleFrozenList()
     ) -> bytes:
         """
-        Serialize replacements to a byte blob.
+        Serialize redactors to a byte blob.
 
         Parameters
         ----------
@@ -219,10 +221,10 @@ class Anonymizer(Pipe):
         Returns
         -------
         bytes
-            Pickled replacements dictionary.
+            Pickled redactors dictionary.
         """
-        serializers = {"replacements": lambda: srsly.pickle_dumps(self._replacements)}
-        return util.to_bytes(serializers, exclude)
+        serializers = {"redactors": lambda: srsly.pickle_dumps(self._redactors)}
+        return util.to_bytes(serializers, exclude)  # type:ignore[arg-type]
 
     def from_disk(
         self,
@@ -231,41 +233,41 @@ class Anonymizer(Pipe):
         exclude: Iterable[str] = SimpleFrozenList(),
     ) -> "Anonymizer":
         """
-        Load replacements from disk.
+        Load redactors from disk.
 
         Parameters
         ----------
         path : str or Path
-            Directory containing the file "replacements".
+            Directory containing the file "redactors".
         exclude : iterable, optional
             Ignored; kept for compatibility with spaCy's serialisation protocol.
 
         Returns
         -------
         Anonymizer
-            self, with replacements restored.
+            self, with redactors restored.
         """
         self.clear()
         path = ensure_path(path)
         deserializers = {
-            "replacements": lambda p: self._replacements.update(read_pickle(p))
+            "redactors": lambda p: self._redactors.update(read_pickle(p))
         }
-        util.from_disk(path, deserializers, exclude)
+        util.from_disk(path, deserializers, exclude)  # type:ignore[arg-type]
         return self
 
     def to_disk(
         self, path: Union[str, Path], *, exclude: Iterable[str] = SimpleFrozenList()
     ) -> None:
         """
-        Save replacements to disk.
+        Save redactors to disk.
 
         Parameters
         ----------
         path : str or Path
-            Target directory; the file "replacements" will be created inside.
+            Target directory; the file "redactors" will be created inside.
         exclude : iterable, optional
             Ignored; kept for compatibility with spaCy's serialisation protocol.
         """
         path = ensure_path(path)
-        serializers = {"replacements": lambda p: write_pickle(p, self._replacements)}
-        util.to_disk(path, serializers, exclude)
+        serializers = {"redactors": lambda p: write_pickle(p, self._redactors)}
+        util.to_disk(path, serializers, exclude)  # type:ignore[arg-type]

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "anonymacy"
 version = "0.0.10"
-requires-python = ">=3.9,<3.15"
+requires-python = ">=3.11,<3.15"
 dependencies = [
     "spacy>=3.8.7",
     "phonenumbers",
@@ -21,7 +21,7 @@ context_enhancer = "anonymacy.context_enhancer:ContextEnhancer"
 conflict_resolver = "anonymacy.conflict_resolver:ConflictResolver"
 anonymizer = "anonymacy.anonymizer:Anonymizer"
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "marimo",
     "pytest",

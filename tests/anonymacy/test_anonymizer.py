@@ -1,6 +1,6 @@
 from __future__ import annotations
 import uuid
-import pytest
+import pytest  # type:ignore[import-untyped]
 from spacy.tokens import Doc, Span
 from spacy.lang.nl import Dutch
 from anonymacy import Anonymizer
@@ -10,7 +10,7 @@ def ent(doc: Doc, start: int, end: int, label: str, score: float = 0.9) -> Span:
     span._.score = score
     return span
 
-def test_no_operators_registered():
+def test_no_redactors_registered():
     nlp = Dutch()
     doc = nlp("Mijn naam is Anna de Vries")
     doc.ents = [ent(doc, 3, 6, "persoon")]
@@ -22,12 +22,12 @@ def test_no_operators_registered():
     assert out.ents[0].label_ == "persoon"
     assert out.ents[0].text == "[PERSOON]"
 
-def test_fixed_string_operator():
+def test_fixed_string_redactor():
     nlp = Dutch()
     doc = nlp("Contact foo@bar.com")
     doc.ents = [ent(doc, 1, 2, "email")]    
     anonymizer = Anonymizer(nlp)
-    anonymizer.add_operators({"email": "[EMAIL]"})
+    anonymizer.add_redactors({"email": "[EMAIL]"})
     
     out: Doc = anonymizer(doc)._.anonymized
     
@@ -41,7 +41,7 @@ def test_zero_arg_callable():
     doc = nlp(f"BSN {fake_bsn}")
     doc.ents = [ent(doc, 1, 2, "BSN")]
     anonymizer = Anonymizer(nlp)
-    anonymizer.add_operators({"BSN": lambda: str(uuid.uuid4())[:8]})
+    anonymizer.add_redactors({"BSN": lambda: str(uuid.uuid4())[:8]})
     
     out: Doc = anonymizer(doc)._.anonymized
     
@@ -54,7 +54,7 @@ def test_one_arg_callable():
     doc.ents = [ent(doc, 1, 2, "persoon")]
     reverse = lambda txt: txt[::-1]
     anonymizer = Anonymizer(nlp)
-    anonymizer.add_operators({"persoon": reverse})
+    anonymizer.add_redactors({"persoon": reverse})
     
     out: Doc = anonymizer(doc)._.anonymized
     
@@ -70,17 +70,17 @@ def test_operator_exception_bubbles():
         raise RuntimeError("operator error")
 
     anonymizer = Anonymizer(nlp)
-    anonymizer.add_operators({"fail": _boom})
+    anonymizer.add_redactors({"fail": _boom})
     with pytest.raises(RuntimeError, match="operator error"):
         anonymizer(doc)
 
-def test_empty_replacement():
+def test_empty_redactor():
     nlp = Dutch()
     
     doc = nlp("Delete [PIN] 1234 ok")
     doc.ents = [ent(doc, 1, 4, "PIN")]
     anonymizer = Anonymizer(nlp)
-    anonymizer.add_operators({"PIN": ""})
+    anonymizer.add_redactors({"PIN": ""})
     
     out: Doc = anonymizer(doc)._.anonymized
     
@@ -95,7 +95,7 @@ def test_overlapping_spans_only_longest_kept():
     span2 = ent(doc, 0, 1, "BSN", score=0.8)
     doc.spans["sc"] = [span1, span2]
     anonymizer = Anonymizer(nlp, style="span", spans_key="sc")
-    anonymizer.add_operators({"BSN": "[B]"})
+    anonymizer.add_redactors({"BSN": "[B]"})
     
     out: Doc = anonymizer(doc)._.anonymized
     
@@ -109,7 +109,7 @@ def test_whole_doc_replaced():
     doc = nlp("Dit is een test")
     doc.ents = [ent(doc, 0, len(words), "sentence")]
     anonymizer = Anonymizer(nlp)
-    anonymizer.add_operators({"sentence": "XXX"})
+    anonymizer.add_redactors({"sentence": "XXX"})
     
     out: Doc = anonymizer(doc)._.anonymized
     
@@ -123,7 +123,7 @@ def test_preserve_surrounding_spaces():
     doc = nlp(txt)
     doc.ents = [ent(doc, 2, 3, "BSN")]
     anonymizer = Anonymizer(nlp)
-    anonymizer.add_operators({"BSN": "X" * 9})
+    anonymizer.add_redactors({"BSN": "X" * 9})
     
     out: Doc = anonymizer(doc)._.anonymized
     
@@ -135,21 +135,21 @@ def test_preserve_surrounding_spaces():
 def test_bytes_roundtrip():
     nlp = Dutch()
     anonymizer = Anonymizer(nlp)
-    anonymizer.add_operators({"foo": "bar", "num": lambda: "42"})
+    anonymizer.add_redactors({"foo": "bar", "num": lambda: "42"})
     blob = anonymizer.to_bytes()
     fresh = Anonymizer(nlp)
     fresh.from_bytes(blob)
-    assert fresh._operators["foo"] == "bar"
+    assert fresh._redactors["foo"] == "bar"
     doc = nlp("hello")
     doc.ents = [ent(doc, 0, 1, "foo")]
     out = fresh(doc)._.anonymized
     assert out.text == "bar"
 
 
-def test_clear_operators():
+def test_clear_redactors():
     nlp = Dutch()
     anonymizer = Anonymizer(nlp)
-    anonymizer.add_operators({"label": "SECRET"})
+    anonymizer.add_redactors({"label": "SECRET"})
     d1 = nlp("token")
     d1.ents = [ent(d1, 0, 1, "label")]
     

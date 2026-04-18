@@ -4,7 +4,6 @@ from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
 from anonymacy import span_filter
 from typing import (
-    Optional,
     Callable,
     Iterable
 )
@@ -60,7 +59,7 @@ class ConflictResolver(Pipe):
             return doc
         
         # Resolve conflicts
-        resolved_spans = self.spans_filter(spans) if self.spans_filter is not None else spans
+        resolved_spans = self.spans_filter(spans, []) if self.spans_filter is not None else spans
 
         # Apply threshold filtering
         if self.threshold > 0.0:
@@ -71,8 +70,8 @@ class ConflictResolver(Pipe):
         
         # Output to specified target
         if self.style == "ent":
-            doc.ents = resolved_spans
+            doc.set_ents(list(resolved_spans))
         else:
-            doc.spans[self.spans_key] = resolved_spans
+            doc.spans[self.spans_key] = list(resolved_spans)
         
         return doc

@@ -8,11 +8,12 @@ from typing import (
     Required,
     NotRequired,
 )
+from collections.abc import Set
 
-class ContextPatternType(TypedDict):
+class ContextPattern(TypedDict):
     label: Required[str]
     context: Required[Union[str, List[Dict[str, Any]]]]
-    invalidate: NotRequired[bool]
+    context_label: NotRequired[str]
 
 @Language.factory("context_enhancer")
 class ContextEnhancer(Pipe):
@@ -100,7 +101,7 @@ class ContextEnhancer(Pipe):
                 continue
          
             context_label = None
-            context = set()
+            context: Set[str] = set()
             
             # Check all matches for this span
             for match_id, start, end in matches:
@@ -128,7 +129,7 @@ class ContextEnhancer(Pipe):
         self._set_spans(doc, processed_spans)
         return doc
 
-    def add_patterns(self, patterns: List[ContextPatternType]) -> None:
+    def add_patterns(self, patterns: List[ContextPattern]) -> None:
         """Add patterns to the context enhancer."""
         self._patterns.extend(patterns)
 
@@ -181,7 +182,7 @@ class ContextEnhancer(Pipe):
         
         return False
     
-    def _create_enhanced_span(self, span: Span, context: List[str], context_label: Optional[str] = None) -> Span:
+    def _create_enhanced_span(self, span: Span, context: Set[str], context_label: Optional[str] = None) -> Span:
         """Create enhanced version of span."""
         label = context_label if context_label else span.label_
         enhanced = Span(span.doc, span.start, span.end, label=label)

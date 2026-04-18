@@ -1,6 +1,6 @@
-from typing import List, Callable
+from typing import List, Tuple
 from phonenumbers import PhoneNumberMatcher
-from spacy.tokens import Doc, Span
+from spacy.tokens import Doc
 from anonymacy.entities import Entity
 
 def _phone_matcher(
@@ -8,14 +8,14 @@ def _phone_matcher(
     supported_regions: List[str] = ["NL", "BE", "DE", "FR", "IT", "ES", "US", "UK"],
     leniency: int = 1,
     score: float = 0.4,
-) -> set[tuple[int, int, float]]:
-    matches = set()
+) -> List[Tuple[int, int, float]]:
+    matches = []
     for region in supported_regions:
         for match in PhoneNumberMatcher(doc.text, region, leniency=leniency):
             try:
                 span = doc.char_span(match.start, match.end)
                 if span:
-                    matches.add((span.start, span.end, score))                            
+                    matches.append((span.start, span.end, score))                            
             except Exception:
                 continue
 
