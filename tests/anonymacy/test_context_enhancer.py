@@ -266,7 +266,7 @@ def test_default_initialization():
     assert context_enhancer.confidence_boost == 0.35
     assert context_enhancer.min_enhanced_score == 0.4
     assert context_enhancer.context_before == 5
-    assert context_enhancer.context_after == 1
+    assert context_enhancer.context_after == 3
 
 
 def test_custom_spans_key():

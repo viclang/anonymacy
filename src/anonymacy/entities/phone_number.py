@@ -1,29 +1,35 @@
 from typing import List, Tuple
-from phonenumbers import PhoneNumberMatcher
+from phonenumbers import PhoneNumberMatcher as Matcher
 from spacy.tokens import Doc
 from anonymacy.entities import Entity
 
-def _phone_matcher(
-    doc: Doc,
-    supported_regions: List[str] = ["NL", "BE", "DE", "FR", "IT", "ES", "US", "UK"],
-    leniency: int = 1,
-    score: float = 0.4,
-) -> List[Tuple[int, int, float]]:
-    matches = []
-    for region in supported_regions:
-        for match in PhoneNumberMatcher(doc.text, region, leniency=leniency):
-            try:
-                span = doc.char_span(match.start, match.end)
-                if span:
-                    matches.append((span.start, span.end, score))                            
-            except Exception:
-                continue
-
-    return matches
+class PhoneNumberMatcher():
+    """Custom matcher for phone numbers using the phonenumbers library."""
+    
+    def __init__(self,
+        regions: List[str]= ["NL", "BE", "DE", "FR", "IT", "ES", "US", "UK"],
+        leniency: int = 1,
+        score: float = 0.4
+    ):
+        self.regions = regions
+        self.leniency = leniency
+        self.score = score
+    
+    def __call__(self, doc: Doc) -> List[Tuple[int, int, float]]:
+        matches = []
+        for region in self.regions:
+            for match in Matcher(text=doc.text, region=region, leniency=self.leniency):
+                try:
+                    span = doc.char_span(match.start, match.end)
+                    if span:
+                        matches.append((span.start, span.end, self.score))                            
+                except Exception:
+                    continue
+        return matches 
 
 PHONE_NUMBER = Entity(
     label="PHONE_NUMBER",
-    custom_matcher=_phone_matcher,
+    custom_matcher=PhoneNumberMatcher(),
     context_patterns=[
         {"pattern": [{"LEMMA": {"IN": [
             "telefoon", "telefoonnummer", "mobiel", "mobieltje", "gsm",

@@ -2,18 +2,21 @@ from typing import Optional
 from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
-from anonymacy import span_filter
+from anonymacy.span_filter import hierarchical_merge_filter, DEFAULT_HIERARCHY
 from typing import (
     Callable,
     Iterable
 )
 
-SpansFilterFunc = Callable[[Iterable[Span], Iterable[Span]], Iterable[Span]]
+SpansFilterFunc = Callable[[Iterable[Span]], Iterable[Span]]
 
 DEFAULT_RESOLVER_CONFIG = {
     "spans_key": "sc",
     "style": "ent",
-    "spans_filter": {"@misc": "anonymacy.highest_confidence_filter.v1"},
+    "spans_filter": {
+        "@misc": "anonymacy.hierarchical_merge_filter.v1",
+        "hierarchy": DEFAULT_HIERARCHY
+    },
     "threshold": 0.5
 }
 
@@ -27,7 +30,7 @@ class ConflictResolver(Pipe):
         name: str = "conflict_resolver",
         spans_key: str = "sc",
         style: str = "ent",
-        spans_filter: SpansFilterFunc = span_filter.highest_confidence_filter,
+        spans_filter: SpansFilterFunc = hierarchical_merge_filter,
         threshold: float = 0.5
     ):
         """Initialize the ConflictResolver.
@@ -59,7 +62,7 @@ class ConflictResolver(Pipe):
             return doc
         
         # Resolve conflicts
-        resolved_spans = self.spans_filter(spans, []) if self.spans_filter is not None else spans
+        resolved_spans = self.spans_filter(spans) if self.spans_filter is not None else spans
 
         # Apply threshold filtering
         if self.threshold > 0.0:

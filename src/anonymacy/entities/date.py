@@ -24,42 +24,42 @@ MMMM_OR_MMM = MMM + MMMM
 YY = r"(?:\d{2})"
 YYYY = r"(?:19|20)\d{2}"
 
-DATETIME = Entity(
-    label="DATETIME",
+DATE = Entity(
+    label="DATE",
     patterns=[
         # ISO 8601 formats
-        {"score": 0.9, "pattern": [{"TEXT": {"REGEX": r"^(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))$"}}]},
+        {"score": 0.9, "pattern": [{"TEXT": {"REGEX": r"\b(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))\b"}}]},
 
         # YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD
         # or DD-MM-YYYY, DD/MM/YYYY, DD.MM.YYYY
         {"score": 0.85, "pattern": [{"TEXT": {"REGEX": {"IN": [
-            rf"^{YYYY}\-{MM}\-{DD}$",
-            rf"^{YYYY}\/{MM}\/{DD}$",
-            rf"^{YYYY}\.{MM}\.{DD}$",
-            rf"^{DD}\-{MM}\-{YYYY}$",
-            rf"^{DD}\/{MM}\/{YYYY}$",
-            rf"^{DD}\.{MM}\.{YYYY}$"
+            rf"\b{YYYY}\-{MM}\-{DD}\b",
+            rf"\b{YYYY}\/{MM}\/{DD}\b",
+            rf"\b{YYYY}\.{MM}\.{DD}\b",
+            rf"\b{DD}\-{MM}\-{YYYY}\b",
+            rf"\b{DD}\/{MM}\/{YYYY}\b",
+            rf"\b{DD}\.{MM}\.{YYYY}\b"
         ]}}}]},
 
         # DD MM YYYY
-        {"score": 0.65, "pattern": [{"TEXT": {"REGEX": rf"^{DD}$"}}, {"TEXT": {"REGEX": rf"^{MM}$"}}, {"TEXT": {"REGEX": rf"^{YYYY}$"}}]},
+        {"score": 0.65, "pattern": [{"TEXT": {"REGEX": rf"\b{DD}\b"}}, {"TEXT": {"REGEX": rf"\b{MM}\b"}}, {"TEXT": {"REGEX": rf"\b{YYYY}\b"}}]},
         
         # DD MM YY
-        {"score": 0.5, "pattern": [{"TEXT": {"REGEX": rf"^{DD}$"}}, {"TEXT": {"REGEX": rf"^{MM}$"}}, {"TEXT": {"REGEX": rf"^{YY}$"}}]},
+        {"score": 0.5, "pattern": [{"TEXT": {"REGEX": rf"\b{DD}\b"}}, {"TEXT": {"REGEX": rf"\b{MM}\b"}}, {"TEXT": {"REGEX": rf"\b{YY}\b"}}]},
 
 
         # DD-MM-YY or DD/MM/YY or DD.MM.YY
         {"score": 0.6, "pattern": [{"TEXT": {"REGEX": {"IN": [
-            rf"^{DD}\-{MM}\-{YY}$",
-            rf"^{DD}\/{MM}\/{YY}$",
-            rf"^{DD}\.{MM}\.{YY}$"
+            rf"\b{DD}\-{MM}\-{YY}\b",
+            rf"\b{DD}\/{MM}\/{YY}\b",
+            rf"\b{DD}\.{MM}\.{YY}\b"
         ]}}}]},
 
         # DD MMMM YYYY or DD MMM YYYY
         {"score": 0.75, "pattern": [
-            {"TEXT": {"REGEX": rf"^{DD}$"}},
+            {"TEXT": {"REGEX": rf"\b{DD}\b"}},
             {"LOWER": {"IN": MMMM_OR_MMM}},
-            {"TEXT": {"REGEX": rf"^{YYYY}$"}}
+            {"TEXT": {"REGEX": rf"\b{YYYY}\b"}}
         ]},
 
         # LIKE_NUM DD MMMM YYYY or LIKE_NUM DD MMM YYYY (ordinal support via spaCy)
@@ -67,15 +67,15 @@ DATETIME = Entity(
             {"LIKE_NUM": True},
             {"LOWER": {"IN": ["of", "van"]}, "OP": "?"},
             {"LOWER": {"IN": MMMM_OR_MMM}},
-            {"TEXT": {"REGEX": rf"^{YYYY}$"}}
+            {"TEXT": {"REGEX": rf"\b{YYYY}\b"}}
         ]},
         
         # MMMM DD, YYYY or MMM DD, YYYY
         {"score": 0.75, "pattern": [
             {"LOWER": {"IN": MMMM_OR_MMM}},
-            {"TEXT": {"REGEX": rf"^{DD}$"}},
+            {"TEXT": {"REGEX": rf"\b{DD}\b"}},
             {"ORTH": ",", "OP": "?"},
-            {"TEXT": {"REGEX": rf"^{YYYY}$"}}
+            {"TEXT": {"REGEX": rf"\b{YYYY}\b"}}
         ]},
 
         # MMMM LIKE_NUM, YYYY or MMM LIKE_NUM, YYYY (ordinal support via spaCy)
@@ -83,7 +83,7 @@ DATETIME = Entity(
             {"LOWER": {"IN": MMMM_OR_MMM}},
             {"LIKE_NUM": True},
             {"ORTH": ",", "OP": "?"},
-            {"TEXT": {"REGEX": rf"^{YYYY}$"}}
+            {"TEXT": {"REGEX": rf"\b{YYYY}\b"}}
         ]},
         
         # YYYY-MM-DD HH:MM:SS
@@ -98,23 +98,23 @@ DATETIME = Entity(
         
         # DD_ORDINAL (of/van) MMMM YYYY or DD_ORDINAL (of/van) MMM YYYY
         {"score": 0.75, "pattern": [
-            {"TEXT": {"REGEX": rf"^{DD_ORDINAL}$"}},
+            {"TEXT": {"REGEX": rf"\b{DD_ORDINAL}\b"}},
             {"LOWER": {"IN": ["of", "van"]}, "OP": "?"},
             {"LOWER": {"IN": MMMM_OR_MMM}},
-            {"TEXT": {"REGEX": rf"^{YYYY}$"}}
+            {"TEXT": {"REGEX": rf"\b{YYYY}\b"}}
         ]},
 
         # MMMM DD_ORDINAL, YYYY or MMM DD_ORDINAL, YYYY
         {"score": 0.75, "pattern": [
             {"LOWER": {"IN": MMMM_OR_MMM}},
-            {"TEXT": {"REGEX": rf"^{DD_ORDINAL}$"}},
+            {"TEXT": {"REGEX": rf"\b{DD_ORDINAL}\b"}},
             {"ORTH": ",", "OP": "?"},
-            {"TEXT": {"REGEX": rf"^{YYYY}$"}}
+            {"TEXT": {"REGEX": rf"\b{YYYY}\b"}}
         ]},
 
         # DD MMMM (without year)
         {"score": 0.6, "pattern": [
-            {"TEXT": {"REGEX": rf"^{DD}$"}},
+            {"TEXT": {"REGEX": rf"\b{DD}\b"}},
             {"LOWER": {"IN": MMMM_OR_MMM}}
         ]},
 
@@ -127,7 +127,7 @@ DATETIME = Entity(
 
         # DD_ORDINAL (of/van) MMMM (without year)
         {"score": 0.6, "pattern": [
-            {"TEXT": {"REGEX": rf"^{DD_ORDINAL}$"}},
+            {"TEXT": {"REGEX": rf"\b{DD_ORDINAL}\b"}},
             {"LOWER": {"IN": ["of", "van"]}, "OP": "?"},
             {"LOWER": {"IN": MMMM_OR_MMM}}
         ]},
@@ -142,7 +142,7 @@ DATETIME = Entity(
         # MMMM DD_ORDINAL (without year or comma)
         {"score": 0.6, "pattern": [
             {"LOWER": {"IN": MMMM_OR_MMM}},
-            {"TEXT": {"REGEX": rf"^{DD_ORDINAL}$"}}
+            {"TEXT": {"REGEX": rf"\b{DD_ORDINAL}\b"}}
         ]},
 
         # MMMM LIKE_NUM (without year)

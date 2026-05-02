@@ -16,17 +16,18 @@ IBAN = Entity(
         "score": 0.5,
         "pattern": [
             {
-                "REGEX": r"""                              # https://github.com/microsoft/presidio/blob/main/presidio-analyzer/presidio_analyzer/predefined_recognizers/generic/iban_recognizer.py
-                    ([A-Z]{2}[ \-]?[0-9]{2})               # country + check digits
-                    (?=(?:[ \-]?[A-Z0-9]){9,30})           # look-ahead: ≥9 alphanumerics ahead
-                    ((?:[ \-]?[A-Z0-9]{3,5}){2})           # 2 mandatory blocks of 3-5 chars
-                    ([ \-]?[A-Z0-9]{3,5})?                 # optional blocks (up to 5×)
-                    ([ \-]?[A-Z0-9]{3,5})?
-                    ([ \-]?[A-Z0-9]{3,5})?
-                    ([ \-]?[A-Z0-9]{3,5})?
-                    ([ \-]?[A-Z0-9]{3,5})?
-                    ([ \-]?[A-Z0-9]{1,3})?                   # final 1-3 chars tail
-                """
+                "LOWER": { "REGEX": r"""                              # https://github.com/microsoft/presidio/blob/main/presidio-analyzer/presidio_analyzer/predefined_recognizers/generic/iban_recognizer.py
+                        \b([a-z]{2}[ \-]?[0-9]{2})               # country + check digits
+                        (?=(?:[ \-]?[a-z0-9]){9,30})           # look-ahead: ≥9 alphanumerics ahead
+                        ((?:[ \-]?[a-z0-9]{3,5}){2})           # 2 mandatory blocks of 3-5 chars
+                        ([ \-]?[a-z0-9]{3,5})?                 # optional blocks (up to 5×)
+                        ([ \-]?[a-z0-9]{3,5})?
+                        ([ \-]?[a-z0-9]{3,5})?
+                        ([ \-]?[a-z0-9]{3,5})?
+                        ([ \-]?[a-z0-9]{3,5})?
+                        ([ \-]?[a-z0-9]{1,3})?\b                   # final 1-3 chars tail
+                    """
+                }
             }
         ],
     }],

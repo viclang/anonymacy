@@ -21,7 +21,7 @@ context_enhancer = "anonymacy.context_enhancer:ContextEnhancer"
 conflict_resolver = "anonymacy.conflict_resolver:ConflictResolver"
 anonymizer = "anonymacy.anonymizer:Anonymizer"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "marimo",
     "pytest",

@@ -12,7 +12,8 @@ from collections.abc import Set
 
 class ContextPattern(TypedDict):
     label: Required[str]
-    context: Required[Union[str, List[Dict[str, Any]]]]
+    pattern: Required[Union[str, List[Dict[str, Any]]]]
+    score: NotRequired[float]
     context_label: NotRequired[str]
 
 @Language.factory("context_enhancer")
@@ -28,7 +29,7 @@ class ContextEnhancer(Pipe):
         added_context_words: Optional[List[str]] = None,
         confidence_boost: float = 0.35,
         min_enhanced_score: float = 0.4,
-        context_window: Tuple[int, int] = (5, 1),
+        context_window: Tuple[int, int] = (5, 3),
         allow_dependency_link: bool = True,
     ):
         """Initialize ContextEnhancer.

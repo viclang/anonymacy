@@ -11,7 +11,7 @@ from typing import (
     NotRequired,
 )
 from collections.abc import Sequence
-from dataclasses import dataclass, replace, MISSING
+from dataclasses import dataclass, replace
 from spacy.tokens import Span, Doc
 
 RedactorFunc = Union[str, Callable[[], str], Callable[[str], str]]
@@ -24,6 +24,7 @@ class Pattern(TypedDict):
 
 class ContextPattern(TypedDict):
     pattern: Required[Union[str, List[Dict[str, Any]]]]
+    score: NotRequired[float]
     context_label: NotRequired[str]
 
 @dataclass(frozen=True)

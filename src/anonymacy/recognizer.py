@@ -2,8 +2,8 @@ from spacy.language import Language
 from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
 from spacy.matcher import Matcher, PhraseMatcher
-from spacy.matcher.levenshtein import levenshtein_compare # type:ignore[import-untyped]
-from anonymacy import span_filter
+from spacy.matcher.levenshtein import levenshtein_compare # ty:ignore[unresolved-import]
+from anonymacy.span_filter import hierarchical_merge_filter, DEFAULT_HIERARCHY
 from anonymacy.util import read_pickle, write_pickle
 from spacy import util
 from spacy.errors import Errors
@@ -30,7 +30,7 @@ import logging
 
 logger = logging.getLogger("anonymacy.recognizer")
 
-class PatternType(TypedDict):
+class Pattern(TypedDict):
     label: Required[str]
     pattern: Required[Union[str, List[Dict[str, Any]]]]
     score: NotRequired[float]
@@ -54,7 +54,10 @@ DEFAULT_RECOGNIZER_CONFIG = {
     "spans_key": RECOGNIZER_DEFAULT_SPANS_KEY,
     "spans_filter": None,
     "annotate_ents": False,
-    "ents_filter": {"@misc": "anonymacy.highest_confidence_filter.v1"},
+    "ents_filter": {
+        "@misc": "anonymacy.hierarchical_merge_filter.v1",
+        "hierarchy": DEFAULT_HIERARCHY
+    },
     "phrase_matcher_attr": None,
     "matcher_fuzzy_compare": {"@misc": "spacy.levenshtein_compare.v1"},
     "default_score": 0.6,
@@ -72,7 +75,7 @@ class Recognizer(Pipe):
         spans_key: Optional[str] = RECOGNIZER_DEFAULT_SPANS_KEY,
         spans_filter: Optional[SpansFilterFunc] = None,
         annotate_ents: bool = False,
-        ents_filter: SpansFilterFunc = span_filter.highest_confidence_filter,
+        ents_filter: SpansFilterFunc = hierarchical_merge_filter,
         phrase_matcher_attr: Optional[Union[int, str]] = None,
         matcher_fuzzy_compare: Callable = anonymacy_levenshtein_compare,
         default_score: float = 0.6,
@@ -96,7 +99,7 @@ class Recognizer(Pipe):
     def clear(self) -> None:
         """Reset all patterns.
         """
-        self._patterns: List[PatternType] = []
+        self._patterns: List[Pattern] = []
         self._validators: Dict[str, Callable[[Span], bool]] = {}
         self._custom_matchers: Dict[str, Callable[[Doc], List[Tuple[int, int, float]]]] = {}
         self.matcher: Matcher = Matcher(
@@ -126,7 +129,7 @@ class Recognizer(Pipe):
         return tuple(sorted(set(labels)))
 
     @property
-    def patterns(self) -> List[PatternType]:
+    def patterns(self) -> List[Pattern]:
         """Get all patterns that were added."""
         return self._patterns
 
@@ -219,7 +222,7 @@ class Recognizer(Pipe):
 
             doc.ents = sorted(spans)
 
-    def add_patterns(self, patterns: List[PatternType]) -> None:
+    def add_patterns(self, patterns: List[Pattern]) -> None:
         """Add patterns to the matcher."""
 
         phrase_pattern_labels = []
@@ -338,7 +341,7 @@ class Recognizer(Pipe):
         """
         self.clear()
         deserializers = {
-            "patterns": lambda b: self.add_patterns(cast(List[PatternType], srsly.json_loads(b))),
+            "patterns": lambda b: self.add_patterns(cast(List[Pattern], srsly.json_loads(b))),
             "custom_matchers": lambda b: self.add_custom_matchers(cast(Dict[str, Callable[[Doc], List[Tuple[int, int, float]]]], srsly.pickle_loads(b))),
             "validators": lambda b: self.add_validators(cast(Dict[str, Callable[[Span], bool]], srsly.pickle_loads(b))),
         }
@@ -370,8 +373,7 @@ class Recognizer(Pipe):
 
         deserializers = {
             "patterns": lambda p: self.add_patterns(srsly.read_jsonl(p)), # ty:ignore[invalid-argument-type]
-            "custom_matchers": lambda p: self.add_custom_matchers(read_pickle(p)), # ty:ignore[invalid-argument-type]
-            "validators": lambda p: self.add_validators(read_pickle(p)), # ty:ignore[invalid-argument-type]
+            "custom_matchers": lambda p: self.add_custom_matchers(read_pickle(p)),
         }
         util.from_disk(path, deserializers, exclude)  # ty:ignore[invalid-argument-type]
         return self

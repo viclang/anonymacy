@@ -2,10 +2,9 @@
 # requires-python = ">=3.11,<3.14"
 # dependencies = [
 #     "anonymacy",
-#     "marimo>=0.23.1",
+#     "marimo>=0.23.3",
 #     "ipython",
-#     "gliner-spacy",
-#     "gliner==0.2.22", # gliner>=0.2.23 breaks gliner-spacy due to load_tokenizer being tied to load_onnx_model
+#     "gliner==0.2.26",
 #     "gliner[tokenizers]",
 #     "hf_xet",
 #     "faker==38.2.0",
@@ -20,7 +19,7 @@
 
 import marimo
 
-__generated_with = "0.23.1"
+__generated_with = "0.23.3"
 app = marimo.App(width="medium")
 
 
@@ -29,12 +28,23 @@ def _():
     import marimo as mo
     from spacy import displacy
     import spacy
-    from anonymacy import PipelineBuilder
+    from gliner import GLiNER
+    from anonymacy import PipelineBuilder, DocBuilder
     from anonymacy import entities
     from anonymacy.entities import nl
     from faker import Faker
 
-    return Faker, PipelineBuilder, displacy, entities, mo, nl, spacy
+    return (
+        DocBuilder,
+        Faker,
+        GLiNER,
+        PipelineBuilder,
+        displacy,
+        entities,
+        mo,
+        nl,
+        spacy,
+    )
 
 
 @app.cell(hide_code=True)
@@ -47,17 +57,34 @@ def _(mo):
 
 
 @app.cell
-def _(Faker, PipelineBuilder, entities, nl, spacy):
-
+def _(Faker, GLiNER, PipelineBuilder, entities, nl, spacy):
+    model = GLiNER.from_pretrained("knowledgator/gliner-x-large")
     nlp = spacy.load("nl_core_news_sm", disable=["ner"])
 
-    nlp.add_pipe("gliner_spacy", config={
-        "gliner_model": "knowledgator/gliner-x-large",
-        # "gliner_model": "E3-JSI/gliner-multi-pii-domains-v1",
-        # "gliner_model": "urchade/gliner_multi-v2.1",
-        "chunk_size": 250,
-        "threshold": 0.5,
-        "labels": [
+    builder = PipelineBuilder(nlp)
+    fake = Faker("nl_NL")
+
+    builder.add_entities([
+        nl.BSN.replace(redactor=fake.ssn),
+        entities.PHONE_NUMBER.replace(redactor=fake.phone_number),
+        entities.DATE,
+    ])
+    return model, nlp
+
+
+@app.cell
+def _(nlp):
+    print(nlp.pipe_names)
+    return
+
+
+@app.cell
+def _(model, text_area):
+    text = text_area.value
+    predicted_entities = model.predict_entities(
+        text,
+        threshold=0.5,
+        labels=[
             "persoon",
             "organisatie",
             "email",
@@ -69,31 +96,17 @@ def _(Faker, PipelineBuilder, entities, nl, spacy):
             "beroep",
             "verzekering",
         ],
-        "style": "span",
-        "map_location": "cpu",
-    })
-
-    builder = PipelineBuilder(nlp)
-    fake = Faker("nl_NL")
-
-    builder.add_entities([
-        nl.BSN.replace(redactor=fake.ssn),
-        nl.PHONE_NUMBER.replace(redactor=fake.phone_number),
-        entities.DATETIME,
-    ])
-    return (nlp,)
+    )
+    return predicted_entities, text
 
 
 @app.cell
-def _(nlp):
-    print(nlp.pipe_names)
-    return
+def _(DocBuilder, nlp, predicted_entities, text):
+    doc = (DocBuilder(nlp, text)
+        .with_gliner(predicted_entities)
+        .build())
 
-
-@app.cell
-def _(nlp, text_area):
-    text = text_area.value
-    doc = nlp(text)
+    doc = nlp(doc)
     return (doc,)
 
 

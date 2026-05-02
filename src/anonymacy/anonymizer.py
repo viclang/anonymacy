@@ -5,15 +5,25 @@ from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
 from spacy import util
 from spacy.util import ensure_path, SimpleFrozenList
-from anonymacy.span_filter import highest_confidence_filter
+from anonymacy.span_filter import hierarchical_merge_filter, DEFAULT_HIERARCHY
 from anonymacy.util import read_pickle, write_pickle
 from pathlib import Path
 import srsly
 
 NoArgReplacement = Callable[[], str]
 TextReplacement = Callable[[str], str]
+SpansFilterFunc = Callable[[Iterable[Span]], Iterable[Span]]
 
-@Language.factory("anonymizer")
+DEFAULT_ANONYMIZER_CONFIG = {
+    "spans_key": "sc",
+    "spans_filter": {
+        "@misc": "anonymacy.hierarchical_merge_filter.v1",
+        "hierarchy": DEFAULT_HIERARCHY
+    },
+    "style": "ent",
+}
+
+@Language.factory("anonymizer", assigns=["doc.ents"], default_config=DEFAULT_ANONYMIZER_CONFIG)
 class Anonymizer(Pipe):
     """
     Replace sensitive entities with user-defined surrogates.
@@ -28,11 +38,13 @@ class Anonymizer(Pipe):
         nlp: Language,
         name: str = "anonymizer",
         spans_key: str = "sc",
+        spans_filter: SpansFilterFunc = hierarchical_merge_filter,
         style: str = "ent",
     ):
         self.nlp = nlp
         self.name = name
         self.spans_key = spans_key
+        self.spans_filter = spans_filter
         self.style = style
         self.clear()
 
@@ -79,11 +91,11 @@ class Anonymizer(Pipe):
         """Remove all registered redactors."""
         self._redactors: Dict[str, Union[str, NoArgReplacement, TextReplacement]] = {}
 
-    def _get_spans(self, doc: Doc) -> List[Span]:
+    def _get_spans(self, doc: Doc) -> Iterable[Span]:
         if self.style == "ent":
             return list(doc.ents)
         spans = list(doc.spans.get(self.spans_key, []))
-        return highest_confidence_filter(spans)
+        return self.spans_filter(spans)
 
     def _apply_redactor(self, label: str, text: str) -> str:
         redactor = self._redactors.get(label)
@@ -203,8 +215,8 @@ class Anonymizer(Pipe):
             self, with redactors restored.
         """
         self.clear()
-        deserializers = {"redactors": lambda b: self._redactors.update(srsly.pickle_loads(b))}  # type:ignore[arg-type]
-        util.from_bytes(bytes_data, deserializers, exclude)  # type:ignore[arg-type]
+        deserializers = {"redactors": lambda b: self._redactors.update(srsly.pickle_loads(b))} # ty:ignore[no-matching-overload]
+        util.from_bytes(bytes_data, deserializers, exclude) # ty:ignore[invalid-argument-type]
         return self
 
     def to_bytes(
@@ -224,7 +236,7 @@ class Anonymizer(Pipe):
             Pickled redactors dictionary.
         """
         serializers = {"redactors": lambda: srsly.pickle_dumps(self._redactors)}
-        return util.to_bytes(serializers, exclude)  # type:ignore[arg-type]
+        return util.to_bytes(serializers, exclude)  # ty:ignore[invalid-argument-type]
 
     def from_disk(
         self,
@@ -252,7 +264,7 @@ class Anonymizer(Pipe):
         deserializers = {
             "redactors": lambda p: self._redactors.update(read_pickle(p))
         }
-        util.from_disk(path, deserializers, exclude)  # type:ignore[arg-type]
+        util.from_disk(path, deserializers, exclude)  # ty:ignore[invalid-argument-type]
         return self
 
     def to_disk(
@@ -270,4 +282,4 @@ class Anonymizer(Pipe):
         """
         path = ensure_path(path)
         serializers = {"redactors": lambda p: write_pickle(p, self._redactors)}
-        util.to_disk(path, serializers, exclude)  # type:ignore[arg-type]
+        util.to_disk(path, serializers, exclude)  # ty:ignore[invalid-argument-type]
