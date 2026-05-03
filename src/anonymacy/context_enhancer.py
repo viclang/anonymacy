@@ -26,7 +26,6 @@ class ContextEnhancer(Pipe):
         name: str = "context_enhancer",
         spans_key: str = "sc",
         style: str = "span",
-        added_context_words: Optional[List[str]] = None,
         confidence_boost: float = 0.35,
         min_enhanced_score: float = 0.4,
         context_window: Tuple[int, int] = (5, 3),
@@ -48,7 +47,6 @@ class ContextEnhancer(Pipe):
         """
         self.nlp = nlp
         self.name = name
-        self.added_context_words = added_context_words if added_context_words else []
         self.confidence_boost = confidence_boost
         self.min_enhanced_score = min_enhanced_score
         self.context_before, self.context_after = context_window
@@ -84,8 +82,8 @@ class ContextEnhancer(Pipe):
             }
         
         # Create extended doc if needed
-        if self.added_context_words:
-            extended_text = doc.text + " " + " ".join(self.added_context_words)
+        if doc._.context_words:
+            extended_text = doc.text + " " + " ".join(doc._.context_words)
             extended_doc = self.nlp.make_doc(extended_text)
         else:
             extended_doc = doc

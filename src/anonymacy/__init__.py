@@ -16,6 +16,9 @@ if not Span.has_extension("context"):
 if not Doc.has_extension("anonymized"):
     Doc.set_extension("anonymized", default=None)
 
+if not Doc.has_extension("context_words"):
+    Doc.set_extension("context_words", default=[])
+
 __all__ = [
     "span_filter",
     "Anonymizer",

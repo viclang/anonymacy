@@ -29,6 +29,11 @@ class DocBuilder:
         self.label_mapping = label_mapping if label_mapping else {}
         self.default_score = default_score
 
+    def with_context_words(self, context_words: List[str]) -> "DocBuilder":
+        """Add _context to the doc with the provided context words."""
+        self.doc._.context_words = context_words
+        return self
+
     def with_hf_ner(self, result: List[Dict[str, Any]]) -> "DocBuilder":
         spans = self._create_spans_from_entities(result, label_key="entity", score_key="score")
         return self._apply_spans(spans)
