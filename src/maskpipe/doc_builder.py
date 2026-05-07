@@ -13,7 +13,7 @@ from spacy.tokens import Doc, Span
 DOC_BUILDER_DEFAULT_SPANS_KEY = "sc"
 
 class DocBuilder:
-    """Utility for building spacy docs with entity context for anonymacy pipelines."""
+    """Utility for building spacy docs with entities for anonymacy pipelines."""
     def __init__(
         self,
         nlp: Language,
@@ -32,6 +32,20 @@ class DocBuilder:
         self.label_mapping = label_mapping if label_mapping else {}
         self.default_score = default_score
         self.alignment_mode = alignment_mode
+
+    @classmethod
+    def build_batch_with_custom(
+        cls,
+        nlp: Language,
+        texts: List[str],
+        entities_list: List[List[Dict[str, Any]]],
+        label_key: str = "label",
+        score_key: str = "score",
+        **builder_kwargs
+    ) -> Iterator[Doc]:
+        """Build batch of docs with custom entities."""
+        for text, entities in zip(texts, entities_list):
+            yield cls(nlp, text, **builder_kwargs).with_custom(entities, label_key=label_key, score_key=score_key).build()
 
     @classmethod
     def build_batch_with_hf_ner(
@@ -62,7 +76,7 @@ class DocBuilder:
         cls,
         nlp: Language,
         texts: List[str],
-        entities_list: List[Dict[str, Dict[str, Any]]],
+        entities_list: Union[List[Dict[str, Dict[str, Dict[str, Any]]]], List[Dict[str, Dict[str, Any]]]],
         **builder_kwargs
     ) -> Iterator[Doc]:
         """Build batch of docs with GLiNER2 entities."""
@@ -86,15 +100,23 @@ class DocBuilder:
         self.doc._.context_words = context_words
         return self
 
+    def with_custom(self, result: List[Dict[str, Any]], label_key:str = "label", score_key="score") -> "DocBuilder":
+        """Add custom entities to the doc with specified label and score keys."""
+        spans = self._create_spans_from_entities(result, label_key=label_key, score_key=score_key)
+        return self._apply_spans(spans)
+
     def with_hf_ner(self, result: List[Dict[str, Any]]) -> "DocBuilder":
+        """Add HuggingFace NER entities to the doc."""
         spans = self._create_spans_from_entities(result, label_key="entity", score_key="score")
         return self._apply_spans(spans)
 
     def with_gliner(self, result: List[Dict[str, Any]]) -> "DocBuilder":
+        """Add GLiNER entities to the doc."""
         spans = self._create_spans_from_entities(result, label_key="label", score_key="score")
         return self._apply_spans(spans)
 
     def with_gliner2(self, result: Union[Dict[str, Dict[str, Dict[str, Any]]], Dict[str, Dict[str, Any]]]) -> "DocBuilder":
+        """Add GLiNER2 entities to the doc."""
         if "entities" in result:
             result = result["entities"]
 
@@ -106,6 +128,7 @@ class DocBuilder:
         return self._apply_spans(spans)
 
     def with_openmed(self, result: List[Dict[str, Any]]) -> "DocBuilder":
+        """Add OpenMed entities to the doc."""
         spans = self._create_spans_from_entities(result, label_key="label", score_key="confidence")
         return self._apply_spans(spans)
 
