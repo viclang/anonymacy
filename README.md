@@ -1,12 +1,6 @@
 # MaskPipe
 MaskPipe is a modular, spaCy-native PII de-identification pipeline. Refine and orchestrate entity results from GLiNER, HuggingFace, or any NER source with context-aware boosting, rule-based validation, and flexible redaction.
 
-Here's an initial README for MaskPipe:
-
-# MaskPipe
-
-A spaCy-powered Python library for detecting and anonymizing sensitive entities in text. Built for Dutch and English text processing with extensible support for custom entity types.
-
 ## Features
 
 - **Entity Recognition** — Pattern-based and custom matching for PII and sensitive data
