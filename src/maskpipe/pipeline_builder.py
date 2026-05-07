@@ -1,7 +1,17 @@
-from typing import List, Dict, Any, cast, Optional
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    cast,
+)
+
 from spacy.language import Language
-from anonymacy.entities import Entity
-from anonymacy import Recognizer, ContextEnhancer, Anonymizer
+
+from .anonymizer import Anonymizer
+from .context_enhancer import ContextEnhancer
+from .entities.entity import Entity
+from .recognizer import Recognizer
 
 class PipelineBuilder:
     """Minimal API every language builder must honour."""

@@ -8,7 +8,7 @@ It can:
 """
 from spacy.tokens import Doc, Span
 from spacy.lang.nl import Dutch
-from anonymacy import ContextEnhancer
+from maskpipe import ContextEnhancer
 
 
 def span(doc: Doc, start: int, end: int, label: str, score: float = 0.6) -> Span:

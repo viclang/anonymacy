@@ -1,6 +1,8 @@
-from spacy.tokens import Span
 import ipaddress
-from anonymacy.entities import Entity
+
+from spacy.tokens import Span
+
+from .entity import Entity
 
 def _valid_ip(span: Span) -> bool:
     try:

@@ -1,14 +1,22 @@
 import inspect
-from typing import Callable, Dict, List, Union, Iterable, cast
-from spacy.language import Language
-from spacy.tokens import Doc, Span
-from spacy.pipeline import Pipe
-from spacy import util
-from spacy.util import ensure_path, SimpleFrozenList
-from anonymacy.span_filter import hierarchical_merge_filter, DEFAULT_HIERARCHY
-from anonymacy.util import read_pickle, write_pickle
+from collections.abc import Iterable
 from pathlib import Path
+from typing import (
+    Callable,
+    Dict,
+    Union,
+    cast,
+)
+
 import srsly
+from spacy import util
+from spacy.language import Language
+from spacy.pipeline import Pipe
+from spacy.tokens import Doc, Span
+from spacy.util import SimpleFrozenList, ensure_path
+
+from .span_filter import DEFAULT_HIERARCHY, hierarchical_merge_filter
+from .util import read_pickle, write_pickle
 
 NoArgReplacement = Callable[[], str]
 TextReplacement = Callable[[str], str]
@@ -17,7 +25,7 @@ SpansFilterFunc = Callable[[Iterable[Span]], Iterable[Span]]
 DEFAULT_ANONYMIZER_CONFIG = {
     "spans_key": "sc",
     "spans_filter": {
-        "@misc": "anonymacy.hierarchical_merge_filter.v1",
+        "@misc": "maskpipe.hierarchical_merge_filter.v1",
         "hierarchy": DEFAULT_HIERARCHY
     },
     "style": "ent",

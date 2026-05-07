@@ -1,4 +1,4 @@
-from anonymacy.entities import Entity
+from .entity import Entity
 
 URL = Entity(
     label="URL",

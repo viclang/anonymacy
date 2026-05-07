@@ -1,12 +1,11 @@
-from typing import Optional
+from collections.abc import Iterable
+from typing import Callable, Optional
+
 from spacy.language import Language
-from spacy.tokens import Doc, Span
 from spacy.pipeline import Pipe
-from anonymacy.span_filter import hierarchical_merge_filter, DEFAULT_HIERARCHY
-from typing import (
-    Callable,
-    Iterable
-)
+from spacy.tokens import Doc, Span
+
+from .span_filter import DEFAULT_HIERARCHY, hierarchical_merge_filter
 
 SpansFilterFunc = Callable[[Iterable[Span]], Iterable[Span]]
 
@@ -14,7 +13,7 @@ DEFAULT_RESOLVER_CONFIG = {
     "spans_key": "sc",
     "style": "ent",
     "spans_filter": {
-        "@misc": "anonymacy.hierarchical_merge_filter.v1",
+        "@misc": "maskpipe.hierarchical_merge_filter.v1",
         "hierarchy": DEFAULT_HIERARCHY
     },
     "threshold": 0.5

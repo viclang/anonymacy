@@ -1,7 +1,7 @@
 # /// script
 # requires-python = ">=3.11,<3.14"
 # dependencies = [
-#     "anonymacy",
+#     "maskpipe",
 #     "marimo>=0.23.3",
 #     "ipython",
 #     "gliner==0.2.26",
@@ -13,7 +13,7 @@
 # ]
 #
 # [tool.uv.sources]
-# anonymacy = { path = "../", editable = true }
+# maskpipe = { path = "../", editable = true }
 #
 # ///
 
@@ -29,9 +29,9 @@ def _():
     from spacy import displacy
     import spacy
     from gliner import GLiNER
-    from anonymacy import PipelineBuilder, DocBuilder
-    from anonymacy import entities
-    from anonymacy.entities import nl
+    from maskpipe import PipelineBuilder, DocBuilder
+    from maskpipe import entities
+    from maskpipe.entities import nl
     from faker import Faker
 
     return (

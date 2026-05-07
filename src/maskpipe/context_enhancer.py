@@ -1,14 +1,20 @@
-from typing import Dict, List, Optional, Tuple, Union, Any
+from collections.abc import Set
+from typing import (
+    Any,
+    Dict,
+    List,
+    NotRequired,
+    Optional,
+    Required,
+    Tuple,
+    TypedDict,
+    Union,
+)
+
 from spacy.language import Language
-from spacy.tokens import Doc, Span
 from spacy.matcher import Matcher
 from spacy.pipeline import Pipe
-from typing import (
-    TypedDict,
-    Required,
-    NotRequired,
-)
-from collections.abc import Set
+from spacy.tokens import Doc, Span
 
 class ContextPattern(TypedDict):
     label: Required[str]

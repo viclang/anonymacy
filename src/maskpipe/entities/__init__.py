@@ -1,5 +1,6 @@
 from .entity import Entity
 from . import nl
+from .credit_card import CREDIT_CARD
 from .date import DATE
 from .email import EMAIL
 from .iban import IBAN
@@ -12,6 +13,7 @@ from .url import URL
 __all__ = [
     "Entity",
     "nl",
+    "CREDIT_CARD",
     "DATE",
     "EMAIL",
     "IBAN",
@@ -19,5 +21,6 @@ __all__ = [
     "IPV6",
     "MAC_ADDRESS",
     "NUMBER",
+    "PHONE_NUMBER",
     "URL",
 ]

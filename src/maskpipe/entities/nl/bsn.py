@@ -1,5 +1,6 @@
 from spacy.tokens import Span
-from anonymacy.entities import Entity
+
+from ..entity import Entity
 
 def _elf_proef(span: Span) -> bool:
     """Validate BSN using the '11-proef' (elf proef) algorithm."""

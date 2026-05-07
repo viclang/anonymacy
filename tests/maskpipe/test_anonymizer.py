@@ -3,7 +3,7 @@ import uuid
 import pytest  # type:ignore[import-untyped]
 from spacy.tokens import Doc, Span
 from spacy.lang.nl import Dutch
-from anonymacy import Anonymizer
+from maskpipe import Anonymizer
 
 def ent(doc: Doc, start: int, end: int, label: str, score: float = 0.9) -> Span:
     span = Span(doc, start, end, label=label)

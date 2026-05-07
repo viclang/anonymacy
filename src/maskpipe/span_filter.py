@@ -1,14 +1,17 @@
-from dataclasses import dataclass
-from spacy import registry
 import itertools
+from collections.abc import Iterable
+from dataclasses import dataclass
+from typing import Dict, List
+
+from spacy import registry
 from spacy.tokens import Span
-from typing import Dict, List, Iterable
 
 DEFAULT_HIERARCHY = {
     'date': ['date_of_birth', 'date_time'],
     'name': ['first_name', 'last_name', 'full_name'],
     'phone': ['phone_number', 'fax_number', 'mobile_number'],
     'address': ['street_address', 'home_address', 'billing_address'],
+    'ip': ['ipv4', 'ipv6'],
     'id': ['ssn', 'bsn', 'medical_record_number', 'account_number', 'employee_id'],
     'national_id': ['nir', 'insee', 'steuer_id', 'steuernummer', 'codice_fiscale'],
 }
@@ -113,7 +116,7 @@ class HierarchicalMergeFilter:
 
         return merged
 
-@registry.misc("anonymacy.hierarchical_merge_filter.v1")
+@registry.misc("maskpipe.hierarchical_merge_filter.v1")
 def make_hierarchical_merge_filter(
     hierarchy: Dict[str, List[str]] = DEFAULT_HIERARCHY,
 ) -> HierarchicalMergeFilter:

@@ -5,6 +5,11 @@ build-backend = "hatchling.build"
 [project]
 name = "anonymacy"
 version = "0.0.11"
+description = "DEPRECATED: anonymacy has been renamed to MaskPipe. Please migrate to the maskpipe package."
+readme = "README.md"
+authors = [
+    { name = "Victor Langemaire", email = "viclang.github@pm.me" }
+]
 requires-python = ">=3.11,<3.15"
 dependencies = [
     "spacy>=3.8.7",
@@ -13,13 +18,13 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/anonymacy"]
+packages = ["src/maskpipe"]
 
 [project.entry-points.spacy_factories]
-recognizer = "anonymacy.recognizer:Recognizer"
-context_enhancer = "anonymacy.context_enhancer:ContextEnhancer"
-conflict_resolver = "anonymacy.conflict_resolver:ConflictResolver"
-anonymizer = "anonymacy.anonymizer:Anonymizer"
+recognizer = "maskpipe.recognizer:Recognizer"
+context_enhancer = "maskpipe.context_enhancer:ContextEnhancer"
+conflict_resolver = "maskpipe.conflict_resolver:ConflictResolver"
+anonymizer = "maskpipe.anonymizer:Anonymizer"
 
 [dependency-groups]
 dev = [

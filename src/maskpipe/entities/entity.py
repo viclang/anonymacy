@@ -1,18 +1,19 @@
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
 from typing import (
     Any,
     Callable,
     Dict,
     List,
-    Optional,
-    Tuple,
-    Union,
-    TypedDict,
-    Required,
     NotRequired,
+    Optional,
+    Required,
+    Tuple,
+    TypedDict,
+    Union,
 )
-from collections.abc import Sequence
-from dataclasses import dataclass, replace
-from spacy.tokens import Span, Doc
+
+from spacy.tokens import Doc, Span
 
 RedactorFunc = Union[str, Callable[[], str], Callable[[str], str]]
 CustomMatcherFunc = Callable[[Doc], List[Tuple[int, int, float]]]

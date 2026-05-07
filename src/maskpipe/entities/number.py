@@ -1,4 +1,4 @@
-from anonymacy.entities import Entity
+from .entity import Entity
 
 NUMBER = Entity(
     label="NUMBER",

@@ -1,6 +1,4 @@
-from spacy.tokens import Span
-import ipaddress
-from anonymacy.entities import Entity
+from .entity import Entity
 
 MAC_ADDRESS = Entity(
     label="MAC_ADDRESS",

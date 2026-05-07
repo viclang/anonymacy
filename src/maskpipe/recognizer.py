@@ -1,34 +1,34 @@
-from spacy.language import Language
-from spacy.tokens import Doc, Span
-from spacy.pipeline import Pipe
-from spacy.matcher import Matcher, PhraseMatcher
-from spacy.matcher.levenshtein import levenshtein_compare # ty:ignore[unresolved-import]
-from anonymacy.span_filter import hierarchical_merge_filter, DEFAULT_HIERARCHY
-from anonymacy.util import read_pickle, write_pickle
-from spacy import util
-from spacy.errors import Errors
-import srsly
-from spacy.util import SimpleFrozenList, ensure_path
+import logging
+from collections.abc import Iterable
 from pathlib import Path
-from spacy import registry
-
 from typing import (
     Any,
     Callable,
     Dict,
-    Iterable,
     List,
+    NotRequired,
     Optional,
+    Required,
     Tuple,
+    TypedDict,
     Union,
     cast,
-    TypedDict,
-    Required,
-    NotRequired,
 )
-import logging
 
-logger = logging.getLogger("anonymacy.recognizer")
+import srsly
+from spacy import registry, util
+from spacy.errors import Errors
+from spacy.language import Language
+from spacy.matcher import Matcher, PhraseMatcher
+from spacy.matcher.levenshtein import levenshtein_compare  # ty:ignore[unresolved-import]
+from spacy.pipeline import Pipe
+from spacy.tokens import Doc, Span
+from spacy.util import SimpleFrozenList, ensure_path
+
+from .span_filter import DEFAULT_HIERARCHY, hierarchical_merge_filter
+from .util import read_pickle, write_pickle
+
+logger = logging.getLogger("maskpipe.recognizer")
 
 class Pattern(TypedDict):
     label: Required[str]
@@ -55,7 +55,7 @@ DEFAULT_RECOGNIZER_CONFIG = {
     "spans_filter": None,
     "annotate_ents": False,
     "ents_filter": {
-        "@misc": "anonymacy.hierarchical_merge_filter.v1",
+        "@misc": "maskpipe.hierarchical_merge_filter.v1",
         "hierarchy": DEFAULT_HIERARCHY
     },
     "phrase_matcher_attr": None,

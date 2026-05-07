@@ -1,7 +1,9 @@
 from typing import List, Tuple
+
 from phonenumbers import PhoneNumberMatcher as Matcher
 from spacy.tokens import Doc
-from anonymacy.entities import Entity
+
+from .entity import Entity
 
 class PhoneNumberMatcher():
     """Custom matcher for phone numbers using the phonenumbers library."""

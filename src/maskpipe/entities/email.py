@@ -1,4 +1,4 @@
-from anonymacy.entities import Entity
+from .entity import Entity
 
 # Characters allowed in an unquoted local part atom (before/after dots)
 EMAIL_LOCAL_ATOM = r"[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+"
