@@ -19,7 +19,7 @@
 
 import marimo
 
-__generated_with = "0.23.3"
+__generated_with = "0.23.5"
 app = marimo.App(width="medium")
 
 
@@ -138,13 +138,13 @@ def _(displacy, doc, mo):
 
 @app.cell
 def _(doc):
-    print(doc._.anonymized)
+    print(doc._.masked)
     return
 
 
 @app.cell
 def _(doc):
-    doc._.anonymized.ents
+    doc._.masked
     return
 
 

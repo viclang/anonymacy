@@ -36,8 +36,8 @@ class Anonymizer(Pipe):
     """
     Replace sensitive entities with user-defined surrogates.
 
-    The pipe stores an anonymized copy of the document under
-    `doc._.anonymized` and leaves the original document untouched.
+    The pipe stores a masked copy of the text under
+    `doc._.masked` and leaves the original document untouched.
     Replacements can be fixed strings or callables (0- or 1-argument).
     """
 
@@ -58,10 +58,10 @@ class Anonymizer(Pipe):
 
     def __call__(self, doc: Doc) -> Doc:
         """
-        Process a document and attach an anonymised copy under `doc._.anonymized`.
+        Process a document and attach masked text under `doc._.masked`.
         The original document is returned unchanged.
         """
-        doc._.anonymized = self._make_anonymized_doc(doc)
+        doc._.masked: str = self._make_masked_doc(doc)
         return doc
 
     def add_redactors(
@@ -132,74 +132,42 @@ class Anonymizer(Pipe):
             "taking zero or one positional argument"
         )
 
-    def _make_anonymized_doc(self, original_doc: Doc) -> Doc:
+    def _make_masked_doc(self, original_doc: Doc) -> str:
         sensitive_spans = sorted(self._get_spans(original_doc), key=lambda span: span.start)
 
-        # fast path: no sensitive data
         if not sensitive_spans:
-            return Doc(
-                original_doc.vocab,
-                words=[token.text for token in original_doc],
-                spaces=[bool(token.whitespace_) for token in original_doc],
-            )
+            return original_doc.text
         
         new_tokens: list[str] = []
-        new_spaces: list[bool] = []
-
         span_index: int = 0
         token_index: int = 0
         doc_length: int = len(original_doc)
 
-        span_info: list[tuple[int, int, str]] = []
         while token_index < doc_length:
-            # outside any sensitive span → copy token
             if span_index >= len(sensitive_spans) or token_index < sensitive_spans[span_index].start:
                 token = original_doc[token_index]
-                new_tokens.append(token.text)
-                new_spaces.append(bool(token.whitespace_))
+                new_tokens.append(token.text_with_ws)
                 token_index += 1
                 continue
 
-            # hit a sensitive span → replace it
             current_span = sensitive_spans[span_index]
             replacement_tokens = self._apply_redactor(current_span.label_, current_span.text)
-            
-            start_position = len(new_tokens)
+            current_span._.replacement: str = replacement_tokens
+
             replacement_doc = self.nlp.tokenizer(replacement_tokens)
             for new_token in replacement_doc:
-                new_tokens.append(new_token.text)
-                new_spaces.append(bool(new_token.whitespace_))
+                new_tokens.append(new_token.text_with_ws)
 
-            if new_spaces:
-                new_spaces[-1] = bool(current_span[-1].whitespace_)
+            # Override last token's spacing to match original span
+            if new_tokens:
+                new_tokens[-1] = new_tokens[-1].rstrip()
+                if current_span[-1].whitespace_:
+                    new_tokens[-1] += " "
 
-            span_info.append(
-                (
-                    start_position,
-                    start_position + len(replacement_doc),
-                    current_span.label_
-                )
-            )
             token_index = current_span.end
             span_index += 1
 
-        # build the new document and create spans
-        anonymized_document = Doc(original_doc.vocab, words=new_tokens, spaces=new_spaces)
-        new_spans: list[Span] = []
-        for start, end, label in span_info:
-            new_span = anonymized_document[start:end]
-            new_span.label_ = label
-            new_spans.append(new_span)
-
-        if self.style == "ent":
-            anonymized_document.ents = new_spans
-        else:
-            key = self.spans_key
-            if key not in anonymized_document.spans:
-                anonymized_document.spans[key] = []
-            anonymized_document.spans[key].extend(new_spans)
-
-        return anonymized_document
+        return "".join(new_tokens).rstrip()
 
     def from_bytes(
         self,

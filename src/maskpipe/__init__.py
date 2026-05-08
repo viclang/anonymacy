@@ -8,8 +8,8 @@ from .doc_builder import DocBuilder
 from .pipeline_builder import PipelineBuilder
 from .recognizer import Recognizer
 
-if not Doc.has_extension("anonymized"):
-    Doc.set_extension("anonymized", default=None)
+if not Doc.has_extension("masked"):
+    Doc.set_extension("masked", default=None)
 
 if not Doc.has_extension("context_words"):
     Doc.set_extension("context_words", default=[])
@@ -17,8 +17,12 @@ if not Doc.has_extension("context_words"):
 if not Span.has_extension("score"):
     Span.set_extension("score", default=0.0)
 
+
 if not Span.has_extension("context"):
     Span.set_extension("context", default=[])
+
+if not Span.has_extension("replacement"):
+    Span.set_extension("replacement", default=None)
 
 __all__ = [
     "span_filter",
