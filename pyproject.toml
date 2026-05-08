@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "anonymacy"
-version = "0.0.11"
-description = "DEPRECATED: anonymacy has been renamed to MaskPipe. Please migrate to the maskpipe package."
+name = "maskpipe"
+version = "0.0.12"
+description = "MaskPipe is a modular, spaCy-native PII de-identification pipeline. Refine and orchestrate entity results from GLiNER, HuggingFace, or any NER source with context-aware boosting, rule-based validation, and flexible redaction."
 readme = "README.md"
 authors = [
     { name = "Victor Langemaire", email = "viclang.github@pm.me" }
