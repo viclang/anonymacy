@@ -16,11 +16,12 @@ def test_no_redactors_registered():
     doc.ents = [ent(doc, 3, 6, "persoon")]
     anonymizer = Anonymizer(nlp)
     
-    out: Doc = anonymizer(doc)._.anonymized
+    doc = anonymizer(doc)
+    out: str = doc._.masked
 
-    assert out.text == "Mijn naam is [PERSOON]"
-    assert out.ents[0].label_ == "persoon"
-    assert out.ents[0].text == "[PERSOON]"
+    assert out == "Mijn naam is [PERSOON]"
+    assert doc.ents[0].label_ == "persoon"
+    assert doc.ents[0]._.replacement == "[PERSOON]"
 
 def test_fixed_string_redactor():
     nlp = Dutch()
@@ -29,10 +30,11 @@ def test_fixed_string_redactor():
     anonymizer = Anonymizer(nlp)
     anonymizer.add_redactors({"email": "[EMAIL]"})
     
-    out: Doc = anonymizer(doc)._.anonymized
+    doc = anonymizer(doc)
+    out: str = doc._.masked
     
-    assert out.text == "Contact [EMAIL]"
-    assert out.ents[0].text == "[EMAIL]"
+    assert out == "Contact [EMAIL]"
+    assert doc.ents[0]._.replacement == "[EMAIL]"
 
 
 def test_zero_arg_callable():
@@ -43,10 +45,10 @@ def test_zero_arg_callable():
     anonymizer = Anonymizer(nlp)
     anonymizer.add_redactors({"BSN": lambda: str(uuid.uuid4())[:8]})
     
-    out: Doc = anonymizer(doc)._.anonymized
-    
-    assert out.ents[0].text != fake_bsn
-    assert len(out.ents[0].text) == 8
+    doc = anonymizer(doc)
+    replacement = doc.ents[0]._.replacement
+    assert replacement != fake_bsn
+    assert len(replacement) == 8
 
 def test_one_arg_callable():
     nlp = Dutch()
@@ -56,9 +58,10 @@ def test_one_arg_callable():
     anonymizer = Anonymizer(nlp)
     anonymizer.add_redactors({"persoon": reverse})
     
-    out: Doc = anonymizer(doc)._.anonymized
+    doc = anonymizer(doc)
+    out: str = doc._.masked
     
-    assert out.text == "Naam aralC"
+    assert out == "Naam aralC"
 
 
 def test_operator_exception_bubbles():
@@ -82,10 +85,11 @@ def test_empty_redactor():
     anonymizer = Anonymizer(nlp)
     anonymizer.add_redactors({"PIN": ""})
     
-    out: Doc = anonymizer(doc)._.anonymized
+    doc = anonymizer(doc)
+    out: str = doc._.masked
     
-    assert out.text == "Delete 1234 ok"
-    assert len(out.ents) == 0
+    assert out == "Delete 1234 ok"
+    assert doc.ents[0]._.replacement == ""
 
 
 def test_overlapping_spans_only_longest_kept():
@@ -97,10 +101,11 @@ def test_overlapping_spans_only_longest_kept():
     anonymizer = Anonymizer(nlp, style="span", spans_key="sc")
     anonymizer.add_redactors({"BSN": "[B]"})
     
-    out: Doc = anonymizer(doc)._.anonymized
+    doc = anonymizer(doc)
+    out: str = doc._.masked
     
-    assert out.text.count("[B]") == 1
-    assert out.text == "[B] is BSN"
+    assert out.count("[B]") == 1
+    assert out == "[B] is BSN"
 
 
 def test_whole_doc_replaced():
@@ -111,10 +116,11 @@ def test_whole_doc_replaced():
     anonymizer = Anonymizer(nlp)
     anonymizer.add_redactors({"sentence": "XXX"})
     
-    out: Doc = anonymizer(doc)._.anonymized
+    doc = anonymizer(doc)
+    out: str = doc._.masked
     
-    assert out.text == "XXX"
-    assert len(out) == 1
+    assert out == "XXX"
+    assert doc.ents[0]._.replacement == "XXX"
 
 
 def test_preserve_surrounding_spaces():
@@ -125,10 +131,12 @@ def test_preserve_surrounding_spaces():
     anonymizer = Anonymizer(nlp)
     anonymizer.add_redactors({"BSN": "X" * 9})
     
-    out: Doc = anonymizer(doc)._.anonymized
+    doc = anonymizer(doc)
+    out: str = doc._.masked
     
-    assert out.text == "Start  XXXXXXXXX  End"    
-    spaces = [bool(t.whitespace_) for t in out]    
+    assert out == "Start  XXXXXXXXX  End"    
+    original_doc = nlp(txt)
+    spaces = [bool(t.whitespace_) for t in original_doc]    
     assert spaces == [bool(t.whitespace_) for t in doc]
 
 
@@ -142,8 +150,9 @@ def test_bytes_roundtrip():
     assert fresh._redactors["foo"] == "bar"
     doc = nlp("hello")
     doc.ents = [ent(doc, 0, 1, "foo")]
-    out = fresh(doc)._.anonymized
-    assert out.text == "bar"
+    doc = fresh(doc)
+    out: str = doc._.masked
+    assert out == "bar"
 
 
 def test_clear_redactors():
@@ -153,8 +162,10 @@ def test_clear_redactors():
     d1 = nlp("token")
     d1.ents = [ent(d1, 0, 1, "label")]
     
-    assert anonymizer(d1)._.anonymized.text == "SECRET"
+    d1 = anonymizer(d1)
+    assert d1._.masked == "SECRET"
     anonymizer.clear()
     d2 = nlp("token")
     d2.ents = [ent(d2, 0, 1, "label")]
-    assert anonymizer(d2)._.anonymized.text == "[LABEL]"
+    d2 = anonymizer(d2)
+    assert d2._.masked == "[LABEL]"
