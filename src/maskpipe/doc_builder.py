@@ -88,7 +88,7 @@ class DocBuilder:
         cls,
         nlp: Language,
         texts: List[str],
-        entities_list: List[List[Dict[str, Any]]],
+        entities_list: List[Dict[str, List[Dict[str, Any]]]],
         **builder_kwargs
     ) -> Iterator[Doc]:
         """Build batch of docs with OpenMed entities."""
@@ -102,21 +102,34 @@ class DocBuilder:
 
     def with_custom(self, result: List[Dict[str, Any]], label_key:str = "label", score_key="score") -> "DocBuilder":
         """Add custom entities to the doc with specified label and score keys."""
+        if not result:
+            return self
+
         spans = self._create_spans_from_entities(result, label_key=label_key, score_key=score_key)
         return self._apply_spans(spans)
 
     def with_hf_ner(self, result: List[Dict[str, Any]]) -> "DocBuilder":
         """Add HuggingFace NER entities to the doc."""
-        spans = self._create_spans_from_entities(result, label_key="entity", score_key="score")
+        if not result:
+            return self
+
+        label_key = "entity_group" if "entity_group" in result[0] else "entity"
+        spans = self._create_spans_from_entities(result, label_key=label_key, score_key="score")
         return self._apply_spans(spans)
 
     def with_gliner(self, result: List[Dict[str, Any]]) -> "DocBuilder":
         """Add GLiNER entities to the doc."""
+        if not result:
+            return self
+
         spans = self._create_spans_from_entities(result, label_key="label", score_key="score")
         return self._apply_spans(spans)
 
     def with_gliner2(self, result: Union[Dict[str, Dict[str, Dict[str, Any]]], Dict[str, Dict[str, Any]]]) -> "DocBuilder":
         """Add GLiNER2 entities to the doc."""
+        if not result:
+            return self
+
         if "entities" in result:
             result = result["entities"]
 
@@ -127,9 +140,14 @@ class DocBuilder:
         spans = self._create_spans_from_entities(entities, label_key="label", score_key="confidence")
         return self._apply_spans(spans)
 
-    def with_openmed(self, result: List[Dict[str, Any]]) -> "DocBuilder":
+    def with_openmed(self, result: Dict[str, List[Dict[str, Any]]]) -> "DocBuilder":
         """Add OpenMed entities to the doc."""
-        spans = self._create_spans_from_entities(result, label_key="label", score_key="confidence")
+        if not result:
+            return self
+
+        if "entities" in result:
+            entities = result["entities"]
+        spans = self._create_spans_from_entities(entities, label_key="label", score_key="confidence")
         return self._apply_spans(spans)
 
     def _create_spans_from_entities(
