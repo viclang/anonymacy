@@ -97,7 +97,7 @@ text = "Alice works at Google. Contact her at alice@example.com or 555-1234."
 results = ner(text)
 
 # results is a list of dicts like:
-# [{"word": "Alice", "start": 0, "end": 5, "entity": "B-PER", "score": 0.98}, ...]
+# [{"word": "Alice", "start": 0, "end": 5, "entity_group": "B-PER", "score": 0.98}, ...]
 
 doc = DocBuilder(nlp, text).with_hf_ner(results).build()
 doc = nlp(doc)
@@ -189,7 +189,7 @@ print(doc._.masked)
 
 ### HuggingFace NER
 
-`with_hf_ner(...)` expects an `entity` key. If your pipeline returns `entity_group`, normalize it first.
+`with_hf_ner(...)` expects an `entity` or `entity_group` key.
 
 ```python
 from transformers import pipeline
