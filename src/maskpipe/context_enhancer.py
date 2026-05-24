@@ -68,8 +68,15 @@ class ContextEnhancer(Pipe):
         # Get spans
         spans = self._get_spans(doc)
         if not spans or not self._patterns:
-            return doc
-                        
+            return doc        
+        
+        if doc._.context_words:
+            extended_text = doc.text + " " + " ".join(doc._.context_words)
+            with self.nlp.select_pipes(disable=["recognizer", "context_enhancer", "conflict_resolver", "anonymizer"]):
+                extended_doc = self.nlp(extended_text)
+        else:
+            extended_doc = doc
+
         # Build matcher with all patterns
         matcher = Matcher(self.nlp.vocab)
         pattern_map = {}  # Maps pattern_id to pattern config
@@ -87,16 +94,9 @@ class ContextEnhancer(Pipe):
                 "context_label": context_label
             }
         
-        # Create extended doc if needed
-        if doc._.context_words:
-            extended_text = doc.text + " " + " ".join(doc._.context_words)
-            extended_doc = self.nlp.make_doc(extended_text)
-        else:
-            extended_doc = doc
-        
         # Find all matches
         matches = matcher(extended_doc)
-        
+
         # Process each span
         processed_spans = []
         for span in spans:
