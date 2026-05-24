@@ -83,7 +83,7 @@ This is the right setup if another model already produced entity offsets.
 ```python
 import spacy
 from transformers import pipeline
-from maskpipe import PipelineBuilder, DocBuilder
+from maskpipe import PipelineBuilder, DocBuilder, HF_NER_MAPPER
 
 # Load your NER model
 ner = pipeline("ner", model="dslim/bert-base-NER", aggregation_strategy="simple")
@@ -99,14 +99,15 @@ results = ner(text)
 # results is a list of dicts like:
 # [{"word": "Alice", "start": 0, "end": 5, "entity_group": "B-PER", "score": 0.98}, ...]
 
-doc = DocBuilder(nlp, text).with_hf_ner(results).build()
+doc = DocBuilder(nlp, text).with_entities(results, entity_mapper=HF_NER_MAPPER).build()
 doc = nlp(doc)
 print(doc._.masked)
 # [PERSON] works at [ORG]. Contact her at [EMAIL] or [PHONE_NUMBER].
 ```
 
 Why this works:
-- `DocBuilder.with_hf_ner()` reads the NER output and converts it to spaCy spans.
+- `HF_NER_MAPPER` normalizes HuggingFace NER output to the canonical entity format.
+- `with_entities()` converts character offsets to spaCy spans with scores.
 - `conflict_resolver` deduplicates overlapping spans and writes clean results to `doc.ents`.
 - `anonymizer` reads `doc.ents` and generates `doc._.masked`.
 
