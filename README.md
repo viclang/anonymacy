@@ -159,70 +159,129 @@ Supported redactors:
 - zero-argument callable: `lambda: "generated-value"`
 - one-argument callable: `lambda text: text[:1] + "*" * (len(text) - 1)`
 
-## DocBuilder Adapters
+## DocBuilder
 
-`DocBuilder` converts character offsets into spaCy spans.
+`DocBuilder` converts character offsets from external NER systems into spaCy spans with scores.
 
-### Supported Input Shapes
-
-- `with_custom(...)`: configurable keys, usually `start`, `end`, `label`, `score`
-- `with_gliner(...)`: expects `start`, `end`, `label`, `score`
-- `with_hf_ner(...)`: expects `start`, `end`, `entity`, `score`
-- `with_openmed(...)`: expects `start`, `end`, `label`, `confidence`
-- `with_gliner2(...)`: expects GLiNER2 entity maps and normalizes them internally
-
-### GLiNER
+### Basic Usage
 
 ```python
-from gliner import GLiNER
 from maskpipe import DocBuilder
 
-text = "Patient John Doe, email: john@example.com"
+# Create a doc and add entities
+doc = DocBuilder(nlp, text).with_entities(
+    entities=[
+        {"start": 0, "end": 5, "label": "PERSON", "score": 0.95},
+        {"start": 30, "end": 45, "label": "EMAIL", "score": 0.99},
+    ]
+).build()
+
+doc = nlp(doc)
+print(doc._.masked)
+```
+
+### Entity Format
+
+`with_entities()` expects a list of dicts with at least:
+- `start`: character offset (int)
+- `end`: character offset (int)
+- `label`: entity type (str)
+- `score`: confidence [0.0, 1.0] (float, optional)
+
+```python
+entities = [
+    {"start": 0, "end": 5, "label": "PERSON", "score": 0.95},
+    {"start": 30, "end": 45, "label": "EMAIL", "score": 0.99},
+]
+doc = DocBuilder(nlp, text).with_entities(entities).build()
+```
+
+### Entity Mappers
+
+Use `entity_mapper` to normalize different NER output formats. MaskPipe provides pre-configured mappers:
+
+| Mapper | Use For | Key Fields |
+|--------|---------|-----------|
+| `GLINER_MAPPER` | GLiNER (x-large) | `start`, `end`, `label`, `score` |
+| `GLINER2_MAPPER` | GLiNER2 (nested format) | nested `{label: {start, end, confidence}}` |
+| `HF_NER_MAPPER` | HuggingFace NER | `entity_group` (or `entity`), `start`, `end`, `score` |
+| `OPENMED_MAPPER` | OpenMed (biomedical) | `start`, `end`, `label`, `confidence` |
+
+Example with GLiNER:
+
+```python
+from maskpipe import GLINER_MAPPER, DocBuilder
+from gliner import GLiNER
+
 model = GLiNER.from_pretrained("knowledgator/gliner-x-large")
+text = "Patient John Doe, email: john@example.com"
 predictions = model.predict_entities(text, labels=["person", "email"], threshold=0.5)
 
-doc = DocBuilder(nlp, text).with_gliner(predictions).build()
+doc = DocBuilder(nlp, text).with_entities(predictions, entity_mapper=GLINER_MAPPER).build()
 doc = nlp(doc)
 print(doc._.masked)
 # [PERSON], email: [EMAIL]
 ```
 
-### HuggingFace NER
-
-`with_hf_ner(...)` expects an `entity` or `entity_group` key.
+Example with HuggingFace NER:
 
 ```python
+from maskpipe import HF_NER_MAPPER, DocBuilder
 from transformers import pipeline
-from maskpipe import DocBuilder
 
-text = "Contact: alice@example.com"
 ner = pipeline("ner", model="dslim/bert-base-NER")
+text = "Contact: alice@example.com"
 results = ner(text)
 
-doc = DocBuilder(nlp, text).with_hf_ner(results).build()
+doc = DocBuilder(nlp, text).with_entities(results, entity_mapper=HF_NER_MAPPER).build()
 doc = nlp(doc)
 print(doc._.masked)
 # Contact: [EMAIL]
 ```
 
-Example normalization for aggregated output:
+### Custom Mappers
+
+Create custom mappers for other NER systems:
 
 ```python
-results = [
-    {**item, "entity": item["entity_group"]}
-    for item in ner(text)
-]
+from maskpipe import EntityMapper
+
+# For any system with {start, end, label, score}
+custom_mapper = EntityMapper(label="type", score="confidence")
+
+# For systems with conditional label fields
+fallback_mapper = EntityMapper(
+    label="entity_type",
+    label_fallback="category",  # use if entity_type not found
+    score="conf"
+)
 ```
 
-### Batch Helpers
+### Batch Processing
+
+Use `build_batch()` to process multiple texts at once:
 
 ```python
-docs = list(DocBuilder.build_batch_with_gliner(nlp, texts, entities_list))
-# also available:
-# build_batch_with_custom
-# build_batch_with_hf_ner
-# build_batch_with_gliner2
-# build_batch_with_openmed
+docs = list(DocBuilder.build_batch(
+    nlp=nlp,
+    texts=["text1", "text2", "text3"],
+    entities_list=[
+        [{"start": 0, "end": 5, "label": "PERSON", "score": 0.9}],
+        [{"start": 10, "end": 20, "label": "EMAIL", "score": 0.95}],
+        [],  # no entities
+    ],
+))
+
+for doc in nlp.pipe(docs):
+    print(doc._.masked)
+```
+
+### Context Words
+
+Add context to help the `context_enhancer` component make relabeling decisions:
+
+```python
+doc = DocBuilder(nlp, text).with_context_words(["email", "contact"]).build()
 ```
 
 ## Customizing Components
