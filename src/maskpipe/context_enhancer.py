@@ -68,7 +68,7 @@ class ContextEnhancer(Pipe):
         # Get spans
         spans = self._get_spans(doc)
         if not spans or not self._patterns:
-            return doc        
+            return doc
         
         if doc._.context_words:
             extended_text = doc.text + " " + " ".join(doc._.context_words)

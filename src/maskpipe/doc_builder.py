@@ -4,11 +4,14 @@ from typing import (
     Dict,
     List,
     Optional,
-    Union,
 )
 
 from spacy.language import Language
 from spacy.tokens import Doc, Span
+from .entity_mapper import (
+    BaseEntityMapper,
+    EntityResult
+)
 
 DOC_BUILDER_DEFAULT_SPANS_KEY = "sc"
 
@@ -22,8 +25,7 @@ class DocBuilder:
         label_mapping: Optional[Dict[str, str]] = None,
         spans_key: Optional[str] = DOC_BUILDER_DEFAULT_SPANS_KEY,
         annotate_ents: bool = False,
-        default_score: float = 0.6,
-        alignment_mode: str = "strict",
+        default_score: float = 0.5,
     ):
         self.nlp = nlp
         self.doc = self.nlp._ensure_doc(text)
@@ -31,146 +33,69 @@ class DocBuilder:
         self.annotate_ents = annotate_ents
         self.label_mapping = label_mapping if label_mapping else {}
         self.default_score = default_score
-        self.alignment_mode = alignment_mode
 
     @classmethod
-    def build_batch_with_custom(
+    def build_batch(
         cls,
         nlp: Language,
         texts: List[str],
-        entities_list: List[List[Dict[str, Any]]],
-        label_key: str = "label",
-        score_key: str = "score",
+        context_words: Optional[List[str]] = None,
+        entities_list: Optional[List[Any]] = None,
+        entity_mapper: Optional[BaseEntityMapper] = None,
+        alignment_mode: str = "strict",
         **builder_kwargs
     ) -> Iterator[Doc]:
         """Build batch of docs with custom entities."""
-        for text, entities in zip(texts, entities_list):
-            yield cls(nlp, text, **builder_kwargs).with_custom(entities, label_key=label_key, score_key=score_key).build()
+        
+        if entities_list is None:
+            entities_list = [] * len(texts)
 
-    @classmethod
-    def build_batch_with_hf_ner(
-        cls,
-        nlp: Language,
-        texts: List[str],
-        entities_list: List[List[Dict[str, Any]]],
-        **builder_kwargs
-    ) -> Iterator[Doc]:
-        """Build batch of docs with HuggingFace NER entities."""
         for text, entities in zip(texts, entities_list):
-            yield cls(nlp, text, **builder_kwargs).with_hf_ner(entities).build()
-
-    @classmethod
-    def build_batch_with_gliner(
-        cls,
-        nlp: Language,
-        texts: List[str],
-        entities_list: List[List[Dict[str, Any]]],
-        **builder_kwargs
-    ) -> Iterator[Doc]:
-        """Build batch of docs with GLiNER entities."""
-        for text, entities in zip(texts, entities_list):
-            yield cls(nlp, text, **builder_kwargs).with_gliner(entities).build()
-
-    @classmethod
-    def build_batch_with_gliner2(
-        cls,
-        nlp: Language,
-        texts: List[str],
-        entities_list: Union[List[Dict[str, Dict[str, Dict[str, Any]]]], List[Dict[str, Dict[str, Any]]]],
-        **builder_kwargs
-    ) -> Iterator[Doc]:
-        """Build batch of docs with GLiNER2 entities."""
-        for text, entities in zip(texts, entities_list):
-            yield cls(nlp, text, **builder_kwargs).with_gliner2(entities).build()
-
-    @classmethod
-    def build_batch_with_openmed(
-        cls,
-        nlp: Language,
-        texts: List[str],
-        entities_list: List[Dict[str, List[Dict[str, Any]]]],
-        **builder_kwargs
-    ) -> Iterator[Doc]:
-        """Build batch of docs with OpenMed entities."""
-        for text, entities in zip(texts, entities_list):
-            yield cls(nlp, text, **builder_kwargs).with_openmed(entities).build()
+            builder = cls(nlp, text, **builder_kwargs)
+            if context_words:
+                builder = builder.with_context_words(context_words)
+            mapped_result = entities_list
+            if entities:
+                if entity_mapper:
+                    mapped_result = entity_mapper.map(entities, builder.default_score)
+                builder = builder.with_entities(mapped_result, alignment_mode=alignment_mode)
+            
+            yield builder.build()
 
     def with_context_words(self, context_words: List[str]) -> "DocBuilder":
         """Add _context to the doc with the provided context words."""
         self.doc._.context_words = context_words
         return self
 
-    def with_custom(self, result: List[Dict[str, Any]], label_key:str = "label", score_key="score") -> "DocBuilder":
+    def with_entities(self, entities: Any, entity_mapper: Optional[BaseEntityMapper] = None, alignment_mode: str = "strict") -> "DocBuilder":
         """Add custom entities to the doc with specified label and score keys."""
-        if not result:
+        
+        if not entities:
             return self
-
-        spans = self._create_spans_from_entities(result, label_key=label_key, score_key=score_key)
-        return self._apply_spans(spans)
-
-    def with_hf_ner(self, result: List[Dict[str, Any]]) -> "DocBuilder":
-        """Add HuggingFace NER entities to the doc."""
-        if not result:
-            return self
-
-        label_key = "entity_group" if "entity_group" in result[0] else "entity"
-        spans = self._create_spans_from_entities(result, label_key=label_key, score_key="score")
-        return self._apply_spans(spans)
-
-    def with_gliner(self, result: List[Dict[str, Any]]) -> "DocBuilder":
-        """Add GLiNER entities to the doc."""
-        if not result:
-            return self
-
-        spans = self._create_spans_from_entities(result, label_key="label", score_key="score")
-        return self._apply_spans(spans)
-
-    def with_gliner2(self, result: Union[Dict[str, Dict[str, Dict[str, Any]]], Dict[str, Dict[str, Any]]]) -> "DocBuilder":
-        """Add GLiNER2 entities to the doc."""
-        if not result:
-            return self
-
-        if "entities" in result:
-            result = result["entities"]
-
-        entities = [
-            {"start": entity["start"], "end": entity["end"], "label": label, "confidence": entity.get("confidence")}
-            for label, entity in result.items()
-        ]
-        spans = self._create_spans_from_entities(entities, label_key="label", score_key="confidence")
-        return self._apply_spans(spans)
-
-    def with_openmed(self, result: Dict[str, List[Dict[str, Any]]]) -> "DocBuilder":
-        """Add OpenMed entities to the doc."""
-        if not result:
-            return self
-
-        if "entities" in result:
-            entities = result["entities"]
-        spans = self._create_spans_from_entities(entities, label_key="label", score_key="confidence")
+        mapped_result = entity_mapper.map(entities, self.default_score) if entity_mapper else entities
+        spans = self._create_spans_from_entities(mapped_result, alignment_mode=alignment_mode)
         return self._apply_spans(spans)
 
     def _create_spans_from_entities(
         self,
-        entities: List[Dict[str, Any]],
-        label_key: str,
-        score_key: str,
+        entities: List[EntityResult],
+        alignment_mode: str = "strict"
     ) -> List[Span]:
         """Private helper: create spans from normalized entities."""
         spans = []
         for entity in entities:
-            label = self.label_mapping.get(entity[label_key], entity[label_key])
+            label = self.label_mapping.get(entity["label"], entity["label"])
             
             span = self.doc.char_span(
                 entity["start"],
                 entity["end"],
                 label=label,
-                alignment_mode=self.alignment_mode
+                alignment_mode=alignment_mode
             )
             if span is None:
                 continue
 
-            span._.score = min(float(entity.get(score_key, self.default_score)), 1.0)
+            span._.score = min(float(entity.get("score", self.default_score)), 1.0)
             spans.append(span)
         return spans
 
@@ -181,10 +106,12 @@ class DocBuilder:
                 all_spans = list(self.doc.spans.get(self.spans_key, []))
                 all_spans.extend(spans)
                 self.doc.spans[self.spans_key] = all_spans
+            
             if self.annotate_ents:
                 all_ents = list(self.doc.ents)
                 all_ents.extend(spans)
                 self.doc.ents = tuple(all_ents)
+        
         return self
 
     def build(self) -> Doc:

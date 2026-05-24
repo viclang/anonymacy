@@ -7,7 +7,17 @@ from .context_enhancer import ContextEnhancer
 from .doc_builder import DocBuilder
 from .pipeline_builder import PipelineBuilder
 from .recognizer import Recognizer
-
+from .structured_analyzer import StructuredAnalyzer
+from .entity_mapper import (
+    BaseEntityMapper,
+    EntityMapper,
+    Gliner2Mapper,
+    EntityResult,
+    GLINER2_MAPPER,
+    GLINER_MAPPER,
+    HF_NER_MAPPER,
+    OPENMED_MAPPER,
+)
 if not Doc.has_extension("masked"):
     Doc.set_extension("masked", default=None)
 
@@ -16,7 +26,6 @@ if not Doc.has_extension("context_words"):
 
 if not Span.has_extension("score"):
     Span.set_extension("score", default=0.0)
-
 
 if not Span.has_extension("context"):
     Span.set_extension("context", default=[])
@@ -32,4 +41,13 @@ __all__ = [
     "DocBuilder",
     "PipelineBuilder",
     "Recognizer",
+    "StructuredAnalyzer",
+    "BaseEntityMapper",
+    "EntityMapper",
+    "Gliner2Mapper",
+    "EntityResult",
+    "GLINER2_MAPPER",
+    "GLINER_MAPPER",
+    "HF_NER_MAPPER",
+    "OPENMED_MAPPER",
 ]

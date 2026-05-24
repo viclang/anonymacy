@@ -19,7 +19,7 @@
 
 import marimo
 
-__generated_with = "0.23.5"
+__generated_with = "0.23.6"
 app = marimo.App(width="medium")
 
 
@@ -30,14 +30,24 @@ def _():
     import spacy
     from gliner import GLiNER
     from maskpipe import PipelineBuilder, DocBuilder
+    from maskpipe.entity_mapper import GLINER_MAPPER
     from maskpipe import entities
     from maskpipe.entities import nl
     from faker import Faker
+    from typing import (
+        Any,
+        Dict,
+        List
+    )
 
     return (
+        Any,
+        Dict,
         DocBuilder,
         Faker,
+        GLINER_MAPPER,
         GLiNER,
+        List,
         PipelineBuilder,
         displacy,
         entities,
@@ -79,9 +89,9 @@ def _(nlp):
 
 
 @app.cell
-def _(model, text_area):
+def _(Any, Dict, List, model, text_area):
     text = text_area.value
-    predicted_entities = model.predict_entities(
+    predicted_entities: List[Dict[str, Any]] = model.predict_entities(
         text,
         threshold=0.5,
         labels=[
@@ -101,9 +111,15 @@ def _(model, text_area):
 
 
 @app.cell
-def _(DocBuilder, nlp, predicted_entities, text):
+def _(
+    DocBuilder,
+    GLINER_MAPPER,
+    nlp,
+    predicted_entities: "List[Dict[str, Any]]",
+    text,
+):
     doc = (DocBuilder(nlp, text)
-        .with_gliner(predicted_entities)
+        .with_entities(predicted_entities, entity_mapper=GLINER_MAPPER)
         .build())
 
     doc = nlp(doc)
@@ -139,12 +155,6 @@ def _(displacy, doc, mo):
 @app.cell
 def _(doc):
     print(doc._.masked)
-    return
-
-
-@app.cell
-def _(doc):
-    doc._.masked
     return
 
 
