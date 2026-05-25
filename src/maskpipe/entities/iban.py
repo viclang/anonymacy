@@ -1,15 +1,10 @@
 from schwifty import IBAN as schwiftyIBAN
-from schwifty.exceptions import InvalidChecksumDigits
 
 from .entity import Entity
 
 def _iban_validator(iban) -> bool:
-                # Returns True if the IBAN is valid, False otherwise
-                try:
-                    iban = schwiftyIBAN(iban)
-                    return True
-                except InvalidChecksumDigits:
-                    return False
+    iban =schwiftyIBAN(iban, allow_invalid=True)
+    return iban.is_valid
 
 IBAN = Entity(
     label="IBAN",
