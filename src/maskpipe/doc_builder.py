@@ -45,21 +45,38 @@ class DocBuilder:
         alignment_mode: str = "strict",
         **builder_kwargs
     ) -> Iterator[Doc]:
-        """Build batch of docs with custom entities."""
-        
+        """Build batch of docs with custom entities.
+
+        Args:
+            nlp: spaCy Language pipeline.
+            texts: List of document texts.
+            context_words: Optional context terms added to each doc.
+            entities_list: Optional list of entity dicts, one per text.
+                           Each entry may be a list of dicts (raw or
+                           pre-mapped) or None.
+            entity_mapper: Optional mapper to normalize entity dicts.
+            alignment_mode: Passed to ``doc.char_span``.
+
+        Returns:
+            Iterator of spaCy Docs with spans populated.
+        """
         if entities_list is None:
-            entities_list = [] * len(texts)
+            entities_list = [None] * len(texts)
 
         for text, entities in zip(texts, entities_list):
             builder = cls(nlp, text, **builder_kwargs)
             if context_words:
                 builder = builder.with_context_words(context_words)
-            mapped_result = entities_list
+
             if entities:
                 if entity_mapper:
                     mapped_result = entity_mapper.map(entities, builder.default_score)
-                builder = builder.with_entities(mapped_result, alignment_mode=alignment_mode)
-            
+                else:
+                    mapped_result = entities
+                builder = builder.with_entities(
+                    mapped_result, alignment_mode=alignment_mode
+                )
+
             yield builder.build()
 
     def with_context_words(self, context_words: List[str]) -> "DocBuilder":
